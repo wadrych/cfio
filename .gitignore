@@ -53,3 +53,5 @@ build/
 *.log
 # If using SPDK/DPDK, ignore the massive generated hugepage files
 hugepages/*
+
+.DS_Store
