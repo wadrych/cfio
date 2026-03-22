@@ -1,0 +1,23 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+  "name": "cfio",
+  "version-string": "0.1.0",
+  "dependencies": [
+    "nlohmann-json",
+    "vincentlaucsb-csv-parser",
+    "ftxui",
+    { "name": "spdlog", "features": ["fmt"] },
+    "fmt",
+    "cli11",
+    "gtest"
+  ],
+  "overrides": [
+    { "name": "nlohmann-json",            "version": "3.12.0" },
+    { "name": "vincentlaucsb-csv-parser", "version": "2.3.0"  },
+    { "name": "ftxui",                    "version": "6.1.9"  },
+    { "name": "spdlog",                   "version": "1.17.0" },
+    { "name": "fmt",                      "version": "12.1.0" },
+    { "name": "cli11",                    "version": "2.6.2"  },
+    { "name": "gtest",                    "version": "1.17.0" }
+  ]
+}
