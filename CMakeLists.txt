@@ -11,3 +11,17 @@ project(cfio VERSION 0.1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+# Generate compile_commands.json for clang-tidy
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Compiler warning flags
+add_compile_options(-Wall -Wextra -Wpedantic -Werror)
+
+# Feature flags (all OFF by default)
+option(CFIO_ENABLE_TUI  "Build with FTXUI TUI support"   OFF)
+option(CFIO_ENABLE_QT   "Build with Qt6 GUI support"     OFF)
+option(CFIO_ENABLE_SPDK "Build with SPDK engine support"  OFF)
+
+add_subdirectory(src)
+add_subdirectory(tests)
