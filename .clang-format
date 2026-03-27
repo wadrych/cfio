@@ -1,0 +1,66 @@
+---
+Language: Cpp
+BasedOnStyle: Google
+Standard: c++20
+
+ColumnLimit: 100
+
+# C++20: concepts and requires clauses
+RequiresClausePosition: OwnLine
+RequiresExpressionIndentation: OuterScope
+IndentRequiresClause: true
+
+# C++20: lambdas
+LambdaBodyIndentation: Signature
+
+# Indentation (Google defaults — made explicit)
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+AccessModifierOffset: -1
+
+# Pointer/reference alignment — Google style
+DerivePointerAlignment: false
+PointerAlignment: Left
+ReferenceAlignment: Left
+
+# Braces — Google uses Attach
+BreakBeforeBraces: Attach
+Cpp11BracedListStyle: true
+
+# Short constructs
+AllowShortFunctionsOnASingleLine: InlineOnly
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+
+# Templates
+SpaceAfterTemplateKeyword: false
+
+# Constructor initializers
+PackConstructorInitializers: NextLine
+
+# Using/include sorting
+SortUsingDeclarations: Lexicographic
+SortIncludes: CaseSensitive
+IncludeBlocks: Regroup
+IncludeCategories:
+  # Project headers ("...")
+  - Regex: '^"'
+    Priority: 1
+  # Third-party (gtest, spdlog, fmt, nlohmann, CLI11, ftxui)
+  - Regex: '^<(gtest|gmock|spdlog|fmt|nlohmann|CLI|ftxui)/'
+    Priority: 2
+  # C++ standard library
+  - Regex: '^<[a-z_]+>$'
+    Priority: 3
+  # C system headers (sys/, linux/, unistd.h, etc.)
+  - Regex: '^<'
+    Priority: 4
+
+# Alignment — avoid brittle column alignment
+AlignConsecutiveDeclarations: false
+AlignConsecutiveAssignments: false
+
+# Penalty — keep return type with function name
+PenaltyReturnTypeOnItsOwnLine: 200
+...

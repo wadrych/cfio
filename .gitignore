@@ -47,9 +47,10 @@
 !.idea/runConfigurations/
 !.idea/vcs.xml
 
-# --- Storage Engine Specifics ---
+# --- Build Artifacts ---
 cmake-build-*/
 build/
+compile_commands.json
 *.log
 # If using SPDK/DPDK, ignore the massive generated hugepage files
 hugepages/*
