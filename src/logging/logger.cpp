@@ -1,9 +1,9 @@
-#include "logging/logger.h"
+#include <stdexcept>
 
 #include <spdlog/async.h>
 #include <spdlog/sinks/basic_file_sink.h>
 
-#include <stdexcept>
+#include "logging/logger.h"
 
 namespace cfio {
 

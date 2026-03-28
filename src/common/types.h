@@ -4,10 +4,11 @@
 /// @file types.h
 /// @brief Common enums and structures shared across all modules.
 
+#include <sys/types.h>
+
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <sys/types.h>
 
 namespace cfio {
 

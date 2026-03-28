@@ -44,18 +44,18 @@ SortUsingDeclarations: Lexicographic
 SortIncludes: CaseSensitive
 IncludeBlocks: Regroup
 IncludeCategories:
-  # Project headers ("...")
-  - Regex: '^"'
-    Priority: 1
-  # Third-party (gtest, spdlog, fmt, nlohmann, CLI11, ftxui)
-  - Regex: '^<(gtest|gmock|spdlog|fmt|nlohmann|CLI|ftxui)/'
-    Priority: 2
-  # C++ standard library
+  # C++ standard library (no extension, lowercase only)
   - Regex: '^<[a-z_]+>$'
     Priority: 3
-  # C system headers (sys/, linux/, unistd.h, etc.)
-  - Regex: '^<'
+  # Third-party (gtest, spdlog, fmt, nlohmann, CLI11, ftxui)
+  - Regex: '^<(gtest|gmock|spdlog|fmt|nlohmann|CLI|ftxui)/'
     Priority: 4
+  # C system headers and remaining angle-bracket includes (catch-all)
+  - Regex: '^<'
+    Priority: 2
+  # Project headers ("...")
+  - Regex: '^"'
+    Priority: 5
 
 # Alignment — avoid brittle column alignment
 AlignConsecutiveDeclarations: false

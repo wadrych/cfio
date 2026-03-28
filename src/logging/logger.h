@@ -4,10 +4,10 @@
 /// @file logger.h
 /// @brief Logger wrapper for spdlog.
 
-#include <spdlog/spdlog.h>
-
 #include <filesystem>
 #include <memory>
+
+#include <spdlog/spdlog.h>
 
 namespace cfio {
 
