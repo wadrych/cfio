@@ -1,5 +1,6 @@
 # dependencies
 find_package(spdlog REQUIRED)
+find_package(CLI11 REQUIRED)
 
 # libcfio-core static library
 add_library(cfio-core STATIC
@@ -22,4 +23,5 @@ add_executable(cfio
 
 target_link_libraries(cfio
   PRIVATE cfio-core
+  PRIVATE CLI11::CLI11
 )

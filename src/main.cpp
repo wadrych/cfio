@@ -1,16 +1,87 @@
 #include <iostream>
 
+#include <CLI/CLI.hpp>
+
+#include "common/cli_options.h"
 #include "logging/logger.h"
 
-int main() {
-  std::cout << "Hello, C-FIO\n";
+int main(int argc, char* argv[]) {
+  cfio::CliOptions opts;
 
-  cfio::Logger::init("cfio-smoke.log", true);
-  cfio::Logger::get()->debug("debug");
-  cfio::Logger::get()->info("info");
-  cfio::Logger::get()->warn("warn");
+  CLI::App app{"C-FIO: Custom Flexible IO Tester"};
+
+  app.add_option("--config", opts.config_path, "Path to job config file")
+      ->required()
+      ->check(CLI::ExistingFile);
+
+  app.add_option("--runtime", opts.runtime_seconds, "Benchmark duration (seconds)")
+      ->default_val(60)
+      ->check(CLI::PositiveNumber);
+
+  app.add_option("--output-dir", opts.output_dir, "Results output directory");
+
+  app.add_option("--ui", opts.ui_backend, "UI backend")
+      ->default_val("terminal")
+      ->check(CLI::IsMember({"terminal", "tui", "qt"}));
+
+  bool direct_flag = false;
+  bool no_direct_flag = false;
+  auto* direct_opt =
+      app.add_flag("--direct", direct_flag, "Force O_DIRECT on for all jobs");
+  auto* no_direct_opt =
+      app.add_flag("--no-direct", no_direct_flag, "Force O_DIRECT off for all jobs");
+  direct_opt->excludes(no_direct_opt);
+  no_direct_opt->excludes(direct_opt);
+
+  std::string engine_str;
+  auto* engine_opt =
+      app.add_option("--engine", engine_str, "Override IO engine for all jobs");
+
+  app.add_flag("--verbose", opts.verbose, "Enable verbose debug logging");
+
+  app.add_flag("--keep-files", opts.keep_files, "Don't delete test files after run");
+
+  CLI11_PARSE(app, argc, argv);
+
+  if (direct_flag) {
+    opts.direct_override = true;
+  } else if (no_direct_flag) {
+    opts.direct_override = false;
+  }
+
+  if (*engine_opt) {
+    opts.engine_override = engine_str;
+  }
+
+  cfio::Logger::init("cfio.log", opts.verbose);
+
+  auto log = cfio::Logger::get();
+  log->info("config: {}", opts.config_path.string());
+  log->info("runtime: {}s", opts.runtime_seconds);
+  log->info("ui: {}", opts.ui_backend);
+  log->info("verbose: {}", opts.verbose);
+  log->info("keep-files: {}", opts.keep_files);
+
+  if (opts.direct_override.has_value()) {
+    log->info("direct override: {}", opts.direct_override.value());
+  } else {
+    log->info("direct override: per-job");
+  }
+
+  if (opts.engine_override.has_value()) {
+    log->info("engine override: {}", opts.engine_override.value());
+  } else {
+    log->info("engine override: per-job");
+  }
+
+  if (!opts.output_dir.empty()) {
+    log->info("output-dir: {}", opts.output_dir.string());
+  } else {
+    log->info("output-dir: auto");
+  }
+
+  std::cout << "C-FIO: CLI parsed successfully\n";
+
   cfio::Logger::shutdown();
-
-  std::cout << "test passed\n";
   return 0;
 }
