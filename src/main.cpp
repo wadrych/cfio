@@ -3,6 +3,7 @@
 #include <CLI/CLI.hpp>
 
 #include "common/cli_options.h"
+#include "common/types.h"
 #include "logging/logger.h"
 
 int main(int argc, char* argv[]) {
