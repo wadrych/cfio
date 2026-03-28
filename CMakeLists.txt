@@ -21,5 +21,15 @@ option(CFIO_ENABLE_TUI  "Build with FTXUI TUI support"   OFF)
 option(CFIO_ENABLE_QT   "Build with Qt6 GUI support"     OFF)
 option(CFIO_ENABLE_SPDK "Build with SPDK engine support"  OFF)
 
+find_package(Doxygen OPTIONAL_COMPONENTS dot)
+if(DOXYGEN_FOUND)
+  add_custom_target(docs
+      COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      COMMENT "Generating Doxygen documentation"
+      VERBATIM
+  )
+endif()
+
 add_subdirectory(src)
 add_subdirectory(tests)
