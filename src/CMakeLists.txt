@@ -1,10 +1,18 @@
+# dependencies
+find_package(spdlog REQUIRED)
+
 # libcfio-core static library
 add_library(cfio-core STATIC
   cfio_core.cpp
+  logging/logger.cpp
 )
 
 target_include_directories(cfio-core
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_link_libraries(cfio-core
+  PUBLIC spdlog::spdlog
 )
 
 # cfio executable
