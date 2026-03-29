@@ -2,6 +2,7 @@
 find_package(spdlog REQUIRED)
 find_package(CLI11 REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(unofficial-vincentlaucsb-csv-parser CONFIG REQUIRED)
 
 # libcfio-core static library
 add_library(cfio-core STATIC
@@ -11,6 +12,8 @@ add_library(cfio-core STATIC
         config/job_config.cpp
         config/config_validator.cpp
         config/json_parser.cpp
+        config/csv_parser.cpp
+        config/parser_factory.cpp
 )
 
 target_include_directories(cfio-core
@@ -20,6 +23,7 @@ target_include_directories(cfio-core
 target_link_libraries(cfio-core
         PUBLIC spdlog::spdlog
         PRIVATE nlohmann_json::nlohmann_json
+        PRIVATE unofficial::vincentlaucsb-csv-parser::csv
 )
 
 # cfio executable
