@@ -1,6 +1,7 @@
 # dependencies
 find_package(spdlog REQUIRED)
 find_package(CLI11 REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 # libcfio-core static library
 add_library(cfio-core STATIC
@@ -9,6 +10,7 @@ add_library(cfio-core STATIC
         config/size_parser.cpp
         config/job_config.cpp
         config/config_validator.cpp
+        config/json_parser.cpp
 )
 
 target_include_directories(cfio-core
@@ -17,6 +19,7 @@ target_include_directories(cfio-core
 
 target_link_libraries(cfio-core
         PUBLIC spdlog::spdlog
+        PRIVATE nlohmann_json::nlohmann_json
 )
 
 # cfio executable
