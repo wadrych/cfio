@@ -6,6 +6,8 @@ find_package(CLI11 REQUIRED)
 add_library(cfio-core STATIC
         cfio_core.cpp
         logging/logger.cpp
+        config/size_parser.cpp
+        config/job_config.cpp
 )
 
 target_include_directories(cfio-core
