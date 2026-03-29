@@ -8,6 +8,7 @@ add_library(cfio-core STATIC
         logging/logger.cpp
         config/size_parser.cpp
         config/job_config.cpp
+        config/config_validator.cpp
 )
 
 target_include_directories(cfio-core
