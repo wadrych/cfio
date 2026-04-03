@@ -8,6 +8,7 @@ add_executable(cfio-tests
   test_size_parser.cpp
   test_job_config.cpp
   test_config_validator.cpp
+  test_config_parser.cpp
 )
 
 target_link_libraries(cfio-tests

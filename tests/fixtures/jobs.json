@@ -1,1 +1,28 @@
-{"jobs":[]}
+{
+  "jobs": [
+    {
+      "name": "seq-read",
+      "engine": "io_uring",
+      "rw": "read",
+      "bs": "128k",
+      "size": "1g",
+      "iodepth": 32,
+      "direct": true,
+      "rwmixread": 100,
+      "filename": "./cfio-seq-read.dat",
+      "align": "4k"
+    },
+    {
+      "name": "rand-write",
+      "engine": "psync",
+      "rw": "randwrite",
+      "bs": "4k",
+      "size": "256m",
+      "iodepth": 1,
+      "direct": true,
+      "rwmixread": 0,
+      "filename": "./cfio-rand-write.dat",
+      "align": "4k"
+    }
+  ]
+}
