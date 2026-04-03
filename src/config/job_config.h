@@ -32,6 +32,12 @@ struct JobConfig {
   /// Derive access pattern from the workload mode.
   static AccessPattern DeriveAccessPattern(RWMode mode);
 
+  /// Convert RWMode enum to its string representation.
+  static std::string ToString(RWMode mode);
+
+  /// Convert AccessPattern enum to its string representation.
+  static std::string ToString(AccessPattern pattern);
+
   /// Returns the IO queue depth of this job.
   int EffectiveIODepth() const;
 };

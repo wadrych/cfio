@@ -1,9 +1,13 @@
+#include <cstdlib>
 #include <iostream>
 
 #include <CLI/CLI.hpp>
 
 #include "common/cli_options.h"
 #include "common/types.h"
+#include "config/config_validator.h"
+#include "config/parser_factory.h"
+#include "config/size_parser.h"
 #include "logging/logger.h"
 
 int main(int argc, char* argv[]) {
@@ -11,6 +15,10 @@ int main(int argc, char* argv[]) {
 
   CLI::App app{"C-FIO: Custom Flexible IO Tester"};
 
+<<<<<<< HEAD
+=======
+  // Required: path to job definition file 
+>>>>>>> e697ac1 (wired job parsers and validation to main)
   app.add_option("--config", opts.config_path, "Path to job config file")
       ->required()
       ->check(CLI::ExistingFile);
@@ -19,12 +27,20 @@ int main(int argc, char* argv[]) {
       ->default_val(60)
       ->check(CLI::PositiveNumber);
 
+<<<<<<< HEAD
+=======
+  // Results output directory
+>>>>>>> e697ac1 (wired job parsers and validation to main)
   app.add_option("--output-dir", opts.output_dir, "Results output directory");
 
   app.add_option("--ui", opts.ui_backend, "UI backend")
       ->default_val("terminal")
       ->check(CLI::IsMember({"terminal", "tui", "qt"}));
 
+<<<<<<< HEAD
+=======
+  // If neither is given, direct_override stays nullopt
+>>>>>>> e697ac1 (wired job parsers and validation to main)
   bool direct_flag = false;
   bool no_direct_flag = false;
   auto* direct_opt =
@@ -38,6 +54,10 @@ int main(int argc, char* argv[]) {
   auto* engine_opt =
       app.add_option("--engine", engine_str, "Override IO engine for all jobs");
 
+<<<<<<< HEAD
+=======
+  // Verbose logging 
+>>>>>>> e697ac1 (wired job parsers and validation to main)
   app.add_flag("--verbose", opts.verbose, "Enable verbose debug logging");
 
   app.add_flag("--keep-files", opts.keep_files, "Don't delete test files after run");
@@ -81,8 +101,39 @@ int main(int argc, char* argv[]) {
     log->info("output-dir: auto");
   }
 
-  std::cout << "C-FIO: CLI parsed successfully\n";
+  try {
+    auto parser = cfio::ParserFactory::Create(opts.config_path);
+    auto jobs = parser->Parse(opts.config_path);
+
+    for (auto& job : jobs) {
+      if (opts.direct_override.has_value()) {
+        job.direct = opts.direct_override.value();
+      }
+      if (opts.engine_override.has_value()) {
+        job.engine = opts.engine_override.value();
+      }
+    }
+
+    cfio::ConfigValidator::ValidateAll(jobs);
+
+    log->info("validated {} job(s)", jobs.size());
+    for (const auto& job : jobs) {
+      log->info("  [{}] engine={} rw={} bs={} size={}",
+                job.name, job.engine,
+                cfio::JobConfig::ToString(job.rw_mode),
+                cfio::SizeParser::Format(job.block_size),
+                cfio::SizeParser::Format(job.file_size));
+    }
+
+    std::cout << "C-FIO: " << jobs.size() << " job(s) validated\n";
+
+  } catch (const std::exception& e) {
+    log->critical("fatal: {}", e.what());
+    std::cerr << "C-FIO: error: " << e.what() << "\n";
+    cfio::Logger::shutdown();
+    return EXIT_FAILURE;
+  }
 
   cfio::Logger::shutdown();
-  return 0;
+  return EXIT_SUCCESS;
 }

@@ -41,6 +41,26 @@ AccessPattern JobConfig::DeriveAccessPattern(RWMode mode) {
   return AccessPattern::kSequential;
 }
 
+std::string JobConfig::ToString(RWMode mode) {
+  switch (mode) {
+    case RWMode::kRead:      return "read";
+    case RWMode::kWrite:     return "write";
+    case RWMode::kRandRead:  return "randread";
+    case RWMode::kRandWrite: return "randwrite";
+    case RWMode::kReadWrite: return "readwrite";
+    case RWMode::kRandRW:    return "randrw";
+  }
+  return "unknown";
+}
+
+std::string JobConfig::ToString(AccessPattern pattern) {
+  switch (pattern) {
+    case AccessPattern::kSequential: return "sequential";
+    case AccessPattern::kRandom:     return "random";
+  }
+  return "unknown";
+}
+
 int JobConfig::EffectiveIODepth() const {
   // Sequential engines cannot have iodepth greater than 1. 
   if (engine == "sync" || engine == "psync") {
