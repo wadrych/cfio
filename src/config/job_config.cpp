@@ -7,6 +7,8 @@
 #include <string>
 #include <unordered_map>
 
+#include "common/engine_traits.h"
+
 namespace cfio {
 
 RWMode JobConfig::ParseRWMode(const std::string& rw_str) {
@@ -62,7 +64,7 @@ std::string JobConfig::ToString(AccessPattern pattern) {
 }
 
 int JobConfig::EffectiveIODepth() const {
-  if (engine == "sync" || engine == "psync") {
+  if (IsSynchronousEngine(engine)) {
     return 1;
   }
   return iodepth;

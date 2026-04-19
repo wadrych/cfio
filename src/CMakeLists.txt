@@ -15,6 +15,7 @@ add_library(cfio-core STATIC
         config/csv_parser.cpp
         config/parser_factory.cpp
         engine/engine_factory.cpp
+        engine/psync_engine.cpp
         telemetry/aligned_buffer.cpp
 )
 

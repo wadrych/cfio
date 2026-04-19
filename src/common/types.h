@@ -44,7 +44,7 @@ struct IOCompletion {
   ssize_t bytes_transferred;                           ///< Actual bytes read/written
   IODirection direction;                               ///< Read or write (carried from IORequest)
   bool success;                                        ///< True if IO completed without error
-  int error_code;                                      ///< errno if !success, 0 otherwise
+  int error_code;                                      ///< errno on failure, EIO on short transfer, 0 on success
   std::chrono::steady_clock::time_point submit_time;   ///< Carried from IORequest
 };
 

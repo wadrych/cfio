@@ -25,6 +25,12 @@ class EngineFactory {
   ///         yet implemented.
   static std::unique_ptr<IEngineIO> Create(const std::string& engine_name);
 
+  /// @brief Check if an engine uses synchronous, blocking IO.
+  ///
+  /// @param engine_name  The engine name to check. Case-sensitive.
+  /// @return true if the engine is synchronous.
+  static bool IsSynchronousEngine(const std::string& engine_name);
+
   /// @brief Check if a name is a recognised engine.
   /// @param engine_name  The engine name to check. Case-sensitive.
   /// @return true if the name is in the known engine list.
