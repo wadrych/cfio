@@ -30,7 +30,6 @@ enum class RWMode {
 
 /// Describes a single IO operation submitted from a worker thread to an engine.
 struct IORequest {
-  int fd;                                              ///< File descriptor
   off_t offset;                                        ///< File offset (aligned)
   void* buffer;                                        ///< Aligned IO buffer
   size_t length;                                       ///< IO size in bytes
@@ -47,12 +46,6 @@ struct IOCompletion {
   bool success;                                        ///< True if IO completed without error
   int error_code;                                      ///< errno if !success, 0 otherwise
   std::chrono::steady_clock::time_point submit_time;   ///< Carried from IORequest
-};
-
-/// Internal tracking for async engines.
-struct SubmitInfo {
-  std::chrono::steady_clock::time_point submit_time;   ///< From the original IORequest
-  IODirection direction;                               ///< Read or write
 };
 
 }  // namespace cfio

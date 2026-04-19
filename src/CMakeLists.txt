@@ -14,6 +14,7 @@ add_library(cfio-core STATIC
         config/json_parser.cpp
         config/csv_parser.cpp
         config/parser_factory.cpp
+        engine/engine_factory.cpp
 )
 
 target_include_directories(cfio-core

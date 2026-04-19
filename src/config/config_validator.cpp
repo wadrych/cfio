@@ -7,6 +7,8 @@
 #include <string>
 #include <unordered_set>
 
+#include "engine/engine_factory.h"
+
 namespace cfio {
 
 void ConfigValidator::Validate(const JobConfig& config) {
@@ -76,11 +78,7 @@ void ConfigValidator::ValidateFileSize(const JobConfig& config) {
 }
 
 void ConfigValidator::ValidateEngine(const JobConfig& config) {
-  // to-do, when Engines are created, please replace this with a more robust mechanism
-  static const std::unordered_set<std::string> kKnownEngines = {
-      "psync", "sync", "libaio", "io_uring"};
-
-  if (kKnownEngines.find(config.engine) == kKnownEngines.end()) {
+  if (!EngineFactory::IsKnownEngine(config.engine)) {
     throw std::runtime_error("job '" + config.name + "': unknown engine '" +
                              config.engine + "'");
   }

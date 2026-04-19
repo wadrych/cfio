@@ -8,6 +8,7 @@
 #include "config/config_validator.h"
 #include "config/parser_factory.h"
 #include "config/size_parser.h"
+#include "engine/engine_factory.h"
 #include "logging/logger.h"
 
 int main(int argc, char* argv[]) {
@@ -53,6 +54,7 @@ int main(int argc, char* argv[]) {
   std::string engine_str;
   auto* engine_opt =
       app.add_option("--engine", engine_str, "Override IO engine for all jobs");
+  engine_opt->check(CLI::IsMember(cfio::EngineFactory::KnownEngines()));
 
 <<<<<<< HEAD
 =======

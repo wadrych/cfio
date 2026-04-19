@@ -8,6 +8,8 @@
 
 #include <gtest/gtest.h>
 
+#include "engine/engine_factory.h"
+
 namespace cfio {
 namespace {
 
@@ -166,7 +168,7 @@ TEST(ConfigValidatorTest, EmptyJobsVector) {
 // --- Engine name coverage ---
 
 TEST(ConfigValidatorTest, AllKnownEnginesAccepted) {
-  for (const auto& engine : {"psync", "sync", "libaio", "io_uring"}) {
+  for (const auto& engine : EngineFactory::KnownEngines()) {
     auto c = MakeValidConfig();
     c.engine = engine;
     EXPECT_NO_THROW(ConfigValidator::Validate(c)) << "engine: " << engine;

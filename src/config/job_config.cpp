@@ -62,7 +62,6 @@ std::string JobConfig::ToString(AccessPattern pattern) {
 }
 
 int JobConfig::EffectiveIODepth() const {
-  // Sequential engines cannot have iodepth greater than 1. 
   if (engine == "sync" || engine == "psync") {
     return 1;
   }
