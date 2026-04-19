@@ -13,14 +13,20 @@ namespace cfio {
 
 /// @brief Abstract interface for submitting IO requests and polling completions.
 ///
-/// All kernel-based engines -- sync, psync, libaio, io_uring -- implement this
+/// All kernel-based engines - sync, psync, libaio, io_uring - implement this
 /// interface. The design uses a unified async model: even synchronous engines
 /// use SubmitIO/PollCompletions so the WorkerThread has a single loop.
 ///
 /// Lifecycle: Create → Open → SubmitIO / PollCompletions loop → Close.
 class IEngineIO {
  public:
+  IEngineIO() = default;
   virtual ~IEngineIO() = default;
+
+  IEngineIO(const IEngineIO&) = delete;
+  IEngineIO& operator=(const IEngineIO&) = delete;
+  IEngineIO(IEngineIO&&) = delete;
+  IEngineIO& operator=(IEngineIO&&) = delete;
 
   /// @brief Open a file and initialise engine-specific state.
   ///
@@ -44,6 +50,8 @@ class IEngineIO {
   ///
   /// @param request  The IO operation to submit. The engine reads all fields
   ///                 but does not modify the request.
+  /// @throws std::runtime_error if the engine is not open.
+  /// @throws std::logic_error on pre-condition violation like duplicate id.
   /// @throws std::system_error on submission failure, e.g. queue full.
   virtual void SubmitIO(const IORequest& request) = 0;
 
@@ -61,8 +69,7 @@ class IEngineIO {
   /// @param min_events  Minimum completions to wait for. Must be >= 1.
   /// @param max_events  Maximum completions to return. Must be >= min_events.
   /// @param[out] out    Vector to append completed IO operations to.
-  virtual void PollCompletions(int min_events, int max_events,
-                               std::vector<IOCompletion>& out) = 0;
+  virtual void PollCompletions(int min_events, int max_events, std::vector<IOCompletion>& out) = 0;
 
   /// @brief Release all resources: file descriptor, kernel context.
   ///
@@ -72,7 +79,7 @@ class IEngineIO {
   /// @brief Check whether O_DIRECT is active after Open.
   /// @return true if the file was opened with O_DIRECT, false if fallback
   ///         to buffered IO occurred.
-  virtual bool IsDirectEnabled() const noexcept = 0;
+  [[nodiscard]] virtual bool IsDirectEnabled() const noexcept = 0;
 };
 
 }  // namespace cfio

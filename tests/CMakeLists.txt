@@ -10,10 +10,11 @@ add_executable(cfio-tests
   test_config_validator.cpp
   test_config_parser.cpp
   test_aligned_buffer.cpp
+  test_engine_interface.cpp
 )
 
 target_link_libraries(cfio-tests
-  PRIVATE GTest::gtest_main
+  PRIVATE GTest::gtest
   PRIVATE cfio-core
 )
 

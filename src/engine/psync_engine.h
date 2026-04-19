@@ -22,10 +22,9 @@ class PsyncEngine : public IEngineIO {
 
   void Open(const JobConfig& config) override;
   void SubmitIO(const IORequest& request) override;
-  void PollCompletions(int min_events, int max_events,
-                       std::vector<IOCompletion>& out) override;
+  void PollCompletions(int min_events, int max_events, std::vector<IOCompletion>& out) override;
   void Close() override;
-  bool IsDirectEnabled() const noexcept override;
+  [[nodiscard]] bool IsDirectEnabled() const noexcept override;
 
  private:
   int fd_ = -1;

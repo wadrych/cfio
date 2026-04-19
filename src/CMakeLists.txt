@@ -5,6 +5,8 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(unofficial-vincentlaucsb-csv-parser CONFIG REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBURING REQUIRED liburing)
+find_library(LIBAIO_LIBRARY NAMES aio REQUIRED)
+find_path(LIBAIO_INCLUDE_DIR NAMES libaio.h REQUIRED)
 
 # libcfio-core static library
 add_library(cfio-core STATIC
@@ -19,12 +21,15 @@ add_library(cfio-core STATIC
         engine/engine_factory.cpp
         engine/psync_engine.cpp
         engine/io_uring_engine.cpp
+        engine/libaio_engine.cpp
+        engine/sync_engine.cpp
         telemetry/aligned_buffer.cpp
 )
 
 target_include_directories(cfio-core
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
         PRIVATE ${LIBURING_INCLUDE_DIRS}
+        PRIVATE ${LIBAIO_INCLUDE_DIR}
 )
 
 target_link_libraries(cfio-core
@@ -32,6 +37,7 @@ target_link_libraries(cfio-core
         PRIVATE nlohmann_json::nlohmann_json
         PRIVATE unofficial::vincentlaucsb-csv-parser::csv
         PRIVATE ${LIBURING_LIBRARIES}
+        PRIVATE ${LIBAIO_LIBRARY}
 )
 
 # cfio executable

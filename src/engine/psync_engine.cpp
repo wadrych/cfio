@@ -7,14 +7,15 @@
 
 #include <cerrno>
 #include <stdexcept>
-#include <system_error>
 
 #include "engine/engine_utils.h"
 #include "logging/logger.h"
 
 namespace cfio {
 
-PsyncEngine::~PsyncEngine() { Close(); }
+PsyncEngine::~PsyncEngine() {
+  Close();
+}
 
 void PsyncEngine::Open(const JobConfig& config) {
   if (fd_ >= 0) {
@@ -31,31 +32,24 @@ void PsyncEngine::SubmitIO(const IORequest& request) {
     throw std::runtime_error("PsyncEngine::SubmitIO -- engine is not open");
   }
   if (has_completion_) {
-    throw std::logic_error(
-        "PsyncEngine::SubmitIO -- previous completion not yet polled");
+    throw std::logic_error("PsyncEngine::SubmitIO -- previous completion not yet polled");
   }
-
-  // Retry lambda handles EINTR from signal delivery during the syscall
-  auto retry_syscall = [](auto fn) {
-    ssize_t r;
-    do {
-      r = fn();
-    } while (r == -1 && errno == EINTR);
-    return r;
-  };
 
   ssize_t result = 0;
-  if (request.direction == IODirection::kRead) {
-    result = retry_syscall([&]() {
-      return ::pread(fd_, request.buffer, request.length, request.offset);
-    });
-  } else {
-    result = retry_syscall([&]() {
-      return ::pwrite(fd_, request.buffer, request.length, request.offset);
-    });
+  switch (request.direction) {
+    case IODirection::kRead:
+      result = RetryOnEintr(
+          [&]() { return ::pread(fd_, request.buffer, request.length, request.offset); });
+      break;
+    case IODirection::kWrite:
+      result = RetryOnEintr(
+          [&]() { return ::pwrite(fd_, request.buffer, request.length, request.offset); });
+      break;
+    default:
+      throw std::logic_error("PsyncEngine::SubmitIO -- unknown IO direction");
   }
 
-  int saved_errno = errno;
+  const int saved_errno = errno;
 
   last_completion_.id = request.id;
   last_completion_.bytes_transferred = result >= 0 ? result : 0;
@@ -88,11 +82,11 @@ void PsyncEngine::PollCompletions(int /*min_events*/, int max_events,
 
 void PsyncEngine::Close() {
   if (fd_ >= 0) {
-    int result = ::close(fd_);
+    const int result = ::close(fd_);
     fd_ = -1;
     if (result == -1) {
-      Logger::get()->warn("PsyncEngine::Close -- close failed with errno {}",
-                          errno);
+      const int saved_errno = errno;
+      Logger::get()->warn("PsyncEngine::Close -- close failed with errno {}", saved_errno);
     }
   }
   has_completion_ = false;

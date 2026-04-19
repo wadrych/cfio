@@ -39,7 +39,7 @@ struct JobConfig {
   static std::string ToString(AccessPattern pattern);
 
   /// Returns the IO queue depth of this job.
-  int EffectiveIODepth() const;
+  [[nodiscard]] int EffectiveIODepth() const;
 };
 
 }  // namespace cfio

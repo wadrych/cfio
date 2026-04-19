@@ -36,10 +36,9 @@ class IoUringEngine : public IEngineIO {
   /// @throws std::runtime_error if the engine is not open.
   void SubmitIO(const IORequest& request) override;
 
-  void PollCompletions(int min_events, int max_events,
-                       std::vector<IOCompletion>& out) override;
+  void PollCompletions(int min_events, int max_events, std::vector<IOCompletion>& out) override;
   void Close() override;
-  bool IsDirectEnabled() const noexcept override;
+  [[nodiscard]] bool IsDirectEnabled() const noexcept override;
 
  private:
   struct io_uring ring_ {};
