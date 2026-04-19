@@ -13,11 +13,11 @@ namespace cfio {
 
 /// @brief Abstract interface for submitting IO requests and polling completions.
 ///
-/// All kernel-based engines (sync, psync, libaio, io_uring) implement this
+/// All kernel-based engines -- sync, psync, libaio, io_uring -- implement this
 /// interface. The design uses a unified async model: even synchronous engines
 /// use SubmitIO/PollCompletions so the WorkerThread has a single loop.
 ///
-/// Lifecycle: Create → Open → (SubmitIO / PollCompletions loop) → Close.
+/// Lifecycle: Create → Open → SubmitIO / PollCompletions loop → Close.
 class IEngineIO {
  public:
   virtual ~IEngineIO() = default;
@@ -44,7 +44,7 @@ class IEngineIO {
   ///
   /// @param request  The IO operation to submit. The engine reads all fields
   ///                 but does not modify the request.
-  /// @throws std::system_error on submission failure (e.g., queue full).
+  /// @throws std::system_error on submission failure, e.g. queue full.
   virtual void SubmitIO(const IORequest& request) = 0;
 
   /// @brief Block until completions are available, then append them to @p out.
@@ -64,12 +64,12 @@ class IEngineIO {
   virtual void PollCompletions(int min_events, int max_events,
                                std::vector<IOCompletion>& out) = 0;
 
-  /// @brief Release all resources (file descriptor, kernel context).
+  /// @brief Release all resources: file descriptor, kernel context.
   ///
-  /// Safe to call if Open() was never called or already closed.
+  /// Safe to call if Open was never called or already closed.
   virtual void Close() = 0;
 
-  /// @brief Check whether O_DIRECT is active after Open().
+  /// @brief Check whether O_DIRECT is active after Open.
   /// @return true if the file was opened with O_DIRECT, false if fallback
   ///         to buffered IO occurred.
   virtual bool IsDirectEnabled() const noexcept = 0;

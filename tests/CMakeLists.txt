@@ -9,6 +9,7 @@ add_executable(cfio-tests
   test_job_config.cpp
   test_config_validator.cpp
   test_config_parser.cpp
+  test_aligned_buffer.cpp
 )
 
 target_link_libraries(cfio-tests

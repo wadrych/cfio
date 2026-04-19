@@ -15,6 +15,7 @@ add_library(cfio-core STATIC
         config/csv_parser.cpp
         config/parser_factory.cpp
         engine/engine_factory.cpp
+        telemetry/aligned_buffer.cpp
 )
 
 target_include_directories(cfio-core
