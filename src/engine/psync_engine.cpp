@@ -3,13 +3,13 @@
 
 #include "engine/psync_engine.h"
 
-#include <fcntl.h>
 #include <unistd.h>
 
 #include <cerrno>
 #include <stdexcept>
 #include <system_error>
 
+#include "engine/engine_utils.h"
 #include "logging/logger.h"
 
 namespace cfio {
@@ -21,42 +21,9 @@ void PsyncEngine::Open(const JobConfig& config) {
     throw std::runtime_error("PsyncEngine::Open -- engine is already open");
   }
 
-  const std::string path_str = config.filename.string();
-  const char* path = path_str.c_str();
-  constexpr mode_t kFileMode = 0644;
-
-  if (config.direct) {
-    // Try with O_DIRECT first
-    int flags = O_RDWR | O_CREAT | O_CLOEXEC | O_DIRECT;
-    fd_ = ::open(path, flags, kFileMode);
-
-    if (fd_ < 0) {
-      int saved_errno = errno;
-      if (saved_errno == EINVAL || saved_errno == EOPNOTSUPP) {
-        Logger::get()->warn(
-            "O_DIRECT not supported for '{}', falling back to buffered IO",
-            path_str);
-        flags = O_RDWR | O_CREAT | O_CLOEXEC;
-        fd_ = ::open(path, flags, kFileMode);
-        if (fd_ < 0) {
-          throw std::system_error(errno, std::system_category(),
-                                  "failed to open file '" + path_str + "'");
-        }
-        return;
-      }
-      throw std::system_error(saved_errno, std::system_category(),
-                              "failed to open file '" + path_str +
-                                  "' with O_DIRECT");
-    }
-    direct_effective_ = true;
-  } else {
-    int flags = O_RDWR | O_CREAT | O_CLOEXEC;
-    fd_ = ::open(path, flags, kFileMode);
-    if (fd_ < 0) {
-      throw std::system_error(errno, std::system_category(),
-                              "failed to open file '" + path_str + "'");
-    }
-  }
+  auto result = OpenFileWithDirectFallback(config.filename, config.direct);
+  fd_ = result.fd;
+  direct_effective_ = result.direct_effective;
 }
 
 void PsyncEngine::SubmitIO(const IORequest& request) {
@@ -129,6 +96,7 @@ void PsyncEngine::Close() {
     }
   }
   has_completion_ = false;
+  direct_effective_ = false;
 }
 
 bool PsyncEngine::IsDirectEnabled() const noexcept {

@@ -7,6 +7,7 @@
 #include <stdexcept>
 
 #include "common/engine_traits.h"
+#include "engine/io_uring_engine.h"
 #include "engine/psync_engine.h"
 
 namespace cfio {
@@ -35,6 +36,10 @@ std::unique_ptr<IEngineIO> EngineFactory::Create(
 
   if (engine_name == "psync") {
     return std::make_unique<PsyncEngine>();
+  }
+
+  if (engine_name == "io_uring") {
+    return std::make_unique<IoUringEngine>();
   }
 
   throw std::runtime_error("engine '" + engine_name + "' not yet implemented");

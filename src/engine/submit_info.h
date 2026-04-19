@@ -9,13 +9,10 @@
 #include "common/types.h"
 
 namespace cfio {
-
-/// Tracks submit-time metadata for in-flight async IO requests.
-/// Used by LibaioEngine and IoUringEngine to correlate completions with
-/// submissions via an unordered_map<uint64_t, SubmitInfo> keyed by request id.
 struct SubmitInfo {
-  std::chrono::steady_clock::time_point submit_time;   ///< From the original IORequest
-  IODirection direction;                               ///< Read or write
+  std::chrono::steady_clock::time_point submit_time;
+  IODirection direction;
+  size_t length;  ///< Requested byte count, used to detect short transfers
 };
 
 }  // namespace cfio

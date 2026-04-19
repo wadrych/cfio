@@ -3,6 +3,8 @@ find_package(spdlog REQUIRED)
 find_package(CLI11 REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(unofficial-vincentlaucsb-csv-parser CONFIG REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LIBURING REQUIRED liburing)
 
 # libcfio-core static library
 add_library(cfio-core STATIC
@@ -16,17 +18,20 @@ add_library(cfio-core STATIC
         config/parser_factory.cpp
         engine/engine_factory.cpp
         engine/psync_engine.cpp
+        engine/io_uring_engine.cpp
         telemetry/aligned_buffer.cpp
 )
 
 target_include_directories(cfio-core
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
+        PRIVATE ${LIBURING_INCLUDE_DIRS}
 )
 
 target_link_libraries(cfio-core
         PUBLIC spdlog::spdlog
         PRIVATE nlohmann_json::nlohmann_json
         PRIVATE unofficial::vincentlaucsb-csv-parser::csv
+        PRIVATE ${LIBURING_LIBRARIES}
 )
 
 # cfio executable
