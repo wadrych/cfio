@@ -6,10 +6,12 @@
 
 #include <atomic>
 #include <barrier>
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <thread>
 
+#include "common/types.h"
 #include "config/job_config.h"
 #include "engine/i_engine_io.h"
 #include "telemetry/aligned_buffer.h"
@@ -81,6 +83,23 @@ class WorkerThread {
   /// @param start_barrier  Barrier for synchronized statart
   /// @param g_running      Global run flag
   void Run(std::barrier<>& start_barrier, const std::atomic<bool>& g_running);
+
+  /// @brief IO loop for iodepth 1 (sync/psync engines).
+  ///
+  /// @param g_running  Global run flag
+  void RunSyncLoop(const std::atomic<bool>& g_running);
+
+  /// @brief Build the next IO request
+  ///
+  /// @return A request ready to submit
+  [[nodiscard]] IORequest GenerateNextIO() noexcept;
+
+  /// @brief Record one completed IO into the histogram and counters.
+  ///
+  /// @param completion  The completed IO to record.
+  /// @param now         Completion timestamp
+  void RecordCompletion(const IOCompletion& completion,
+                        std::chrono::steady_clock::time_point now) noexcept;
 
   JobConfig config_;
   std::unique_ptr<IEngineIO> engine_;
