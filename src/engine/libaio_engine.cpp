@@ -140,7 +140,8 @@ void LibaioEngine::PollCompletions(int min_events, int max_events, std::vector<I
 
   out.reserve(out.size() + static_cast<size_t>(max_events));
 
-  int nr = 0;  do {
+  int nr = 0;
+  do {
     nr = io_getevents(ctx_, min_events, max_events, events_.data(), nullptr);
   } while (nr == -EINTR);
 

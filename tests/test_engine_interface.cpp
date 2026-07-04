@@ -1,14 +1,6 @@
 /// @file test_engine_interface.cpp
 /// @brief Unit tests for IO engine interface, factory, and all four engines.
 
-#include "engine/engine_factory.h"
-#include "engine/io_uring_engine.h"
-#include "engine/libaio_engine.h"
-#include "engine/psync_engine.h"
-#include "engine/sync_engine.h"
-#include "logging/logger.h"
-#include "telemetry/aligned_buffer.h"
-
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -25,6 +17,14 @@
 
 #include <gtest/gtest.h>
 
+#include "engine/engine_factory.h"
+#include "engine/io_uring_engine.h"
+#include "engine/libaio_engine.h"
+#include "engine/psync_engine.h"
+#include "engine/sync_engine.h"
+#include "logging/logger.h"
+#include "telemetry/aligned_buffer.h"
+
 namespace cfio {
 
 // -- Logger environment: GTest manages init/shutdown around all tests --------
@@ -32,8 +32,7 @@ namespace cfio {
 class LoggerEnvironment : public ::testing::Environment {
  public:
   void SetUp() override {
-    auto log_path =
-        std::filesystem::path{::testing::TempDir()} / "cfio_engine_test.log";
+    auto log_path = std::filesystem::path{::testing::TempDir()} / "cfio_engine_test.log";
     Logger::init(log_path, /*verbose=*/false);
   }
   void TearDown() override { Logger::shutdown(); }
@@ -51,8 +50,7 @@ constexpr int kAsyncDepth = 4;
 
 // -- Helpers -----------------------------------------------------------------
 
-JobConfig MakeTestConfig(const std::string& engine_name,
-                         const std::filesystem::path& filepath) {
+JobConfig MakeTestConfig(const std::string& engine_name, const std::filesystem::path& filepath) {
   JobConfig cfg;
   cfg.name = "test";
   cfg.engine = engine_name;
@@ -79,8 +77,7 @@ IORequest MakeRequest(uint64_t id, off_t offset, void* buffer, size_t length,
 }
 
 void ExpectSuccessfulCompletion(const IOCompletion& c, uint64_t expected_id,
-                                IODirection expected_dir,
-                                ssize_t expected_bytes) {
+                                IODirection expected_dir, ssize_t expected_bytes) {
   EXPECT_EQ(c.id, expected_id);
   EXPECT_EQ(c.direction, expected_dir);
   EXPECT_EQ(c.bytes_transferred, expected_bytes);
@@ -120,8 +117,7 @@ class TempFile {
     std::vector<uint8_t> block(kBlockSize);
     for (size_t i = 0; i < kBlockCount; ++i) {
       std::memset(block.data(), static_cast<int>(i & 0xFF), kBlockSize);
-      auto written =
-          ::write(fd, block.data(), kBlockSize);
+      auto written = ::write(fd, block.data(), kBlockSize);
       if (written != static_cast<ssize_t>(kBlockSize)) {
         ::close(fd);
         throw std::runtime_error("short write in TempFile constructor");
@@ -182,8 +178,7 @@ TEST(EngineFactoryTest, KnownEnginesContainsAll) {
   const auto& engines = EngineFactory::KnownEngines();
   EXPECT_NE(std::find(engines.begin(), engines.end(), "psync"), engines.end());
   EXPECT_NE(std::find(engines.begin(), engines.end(), "sync"), engines.end());
-  EXPECT_NE(std::find(engines.begin(), engines.end(), "io_uring"),
-            engines.end());
+  EXPECT_NE(std::find(engines.begin(), engines.end(), "io_uring"), engines.end());
   EXPECT_NE(std::find(engines.begin(), engines.end(), "libaio"), engines.end());
 }
 
@@ -207,7 +202,7 @@ TEST(EngineFactoryTest, IsKnownEngine) {
 // Step 2 -- Typed sync engine tests for PsyncEngine + SyncEngine
 // ============================================================================
 
-template <typename T>
+template<typename T>
 class SyncEngineTypedTest : public ::testing::Test {
  protected:
   void SetUp() override { tmp_ = std::make_unique<TempFile>(); }
@@ -243,25 +238,21 @@ TYPED_TEST(SyncEngineTypedTest, WriteAndReadBack) {
   std::memset(read_buf.data(), 0x00, kBlockSize);
 
   // Write
-  auto wreq =
-      MakeRequest(1, 0, write_buf.data(), kBlockSize, IODirection::kWrite);
+  auto wreq = MakeRequest(1, 0, write_buf.data(), kBlockSize, IODirection::kWrite);
   this->engine_.SubmitIO(wreq);
 
   std::vector<IOCompletion> out;
   this->engine_.PollCompletions(1, 1, out);
   ASSERT_EQ(out.size(), 1u);
-  ExpectSuccessfulCompletion(out[0], 1, IODirection::kWrite,
-                             static_cast<ssize_t>(kBlockSize));
+  ExpectSuccessfulCompletion(out[0], 1, IODirection::kWrite, static_cast<ssize_t>(kBlockSize));
 
   // Read back into a separate buffer
   out.clear();
-  auto rreq =
-      MakeRequest(2, 0, read_buf.data(), kBlockSize, IODirection::kRead);
+  auto rreq = MakeRequest(2, 0, read_buf.data(), kBlockSize, IODirection::kRead);
   this->engine_.SubmitIO(rreq);
   this->engine_.PollCompletions(1, 1, out);
   ASSERT_EQ(out.size(), 1u);
-  ExpectSuccessfulCompletion(out[0], 2, IODirection::kRead,
-                             static_cast<ssize_t>(kBlockSize));
+  ExpectSuccessfulCompletion(out[0], 2, IODirection::kRead, static_cast<ssize_t>(kBlockSize));
 
   EXPECT_EQ(std::memcmp(read_buf.data(), write_buf.data(), kBlockSize), 0);
 }
@@ -278,8 +269,7 @@ TYPED_TEST(SyncEngineTypedTest, CompletionFieldsOnWrite) {
   std::vector<IOCompletion> out;
   this->engine_.PollCompletions(1, 1, out);
   ASSERT_EQ(out.size(), 1u);
-  ExpectSuccessfulCompletion(out[0], 42, IODirection::kWrite,
-                             static_cast<ssize_t>(kBlockSize));
+  ExpectSuccessfulCompletion(out[0], 42, IODirection::kWrite, static_cast<ssize_t>(kBlockSize));
   EXPECT_EQ(out[0].submit_time, req.submit_time);
 }
 
@@ -295,8 +285,7 @@ TYPED_TEST(SyncEngineTypedTest, CompletionFieldsOnRead) {
   std::vector<IOCompletion> out;
   this->engine_.PollCompletions(1, 1, out);
   ASSERT_EQ(out.size(), 1u);
-  ExpectSuccessfulCompletion(out[0], 99, IODirection::kRead,
-                             static_cast<ssize_t>(kBlockSize));
+  ExpectSuccessfulCompletion(out[0], 99, IODirection::kRead, static_cast<ssize_t>(kBlockSize));
   EXPECT_EQ(out[0].submit_time, req.submit_time);
 }
 
@@ -356,7 +345,7 @@ TYPED_TEST(SyncEngineTypedTest, DoubleCloseSafe) {
 // Step 3 -- Async engine smoke tests
 // ============================================================================
 
-template <typename T>
+template<typename T>
 class AsyncEngineTypedTest : public ::testing::Test {
  protected:
   void SetUp() override { tmp_ = std::make_unique<TempFile>(); }
@@ -370,8 +359,7 @@ class AsyncEngineTypedTest : public ::testing::Test {
     if constexpr (std::is_same_v<T, IoUringEngine>) {
       name = "io_uring";
     } else {
-      static_assert(std::is_same_v<T, LibaioEngine>,
-                    "unhandled async engine");
+      static_assert(std::is_same_v<T, LibaioEngine>, "unhandled async engine");
       name = "libaio";
     }
     auto cfg = MakeTestConfig(name, tmp_->path());
@@ -400,9 +388,8 @@ TYPED_TEST(AsyncEngineTypedTest, AsyncWriteAndRead) {
 
   for (int i = 0; i < kAsyncDepth; ++i) {
     auto offset = static_cast<off_t>(i * kBlockSize);
-    auto req = MakeRequest(static_cast<uint64_t>(i), offset,
-                           wbufs[static_cast<size_t>(i)].data(), kBlockSize,
-                           IODirection::kWrite);
+    auto req = MakeRequest(static_cast<uint64_t>(i), offset, wbufs[static_cast<size_t>(i)].data(),
+                           kBlockSize, IODirection::kWrite);
     this->engine_.SubmitIO(req);
   }
 
@@ -425,8 +412,7 @@ TYPED_TEST(AsyncEngineTypedTest, AsyncWriteAndRead) {
   for (int i = 0; i < kAsyncDepth; ++i) {
     auto offset = static_cast<off_t>(i * kBlockSize);
     auto req = MakeRequest(static_cast<uint64_t>(10 + i), offset,
-                           rbufs[static_cast<size_t>(i)].data(), kBlockSize,
-                           IODirection::kRead);
+                           rbufs[static_cast<size_t>(i)].data(), kBlockSize, IODirection::kRead);
     this->engine_.SubmitIO(req);
   }
 
@@ -443,8 +429,7 @@ TYPED_TEST(AsyncEngineTypedTest, AsyncWriteAndRead) {
   for (const auto& c : out) {
     auto idx = static_cast<size_t>(c.id - 10);
     ASSERT_LT(idx, static_cast<size_t>(kAsyncDepth));
-    EXPECT_EQ(
-        std::memcmp(rbufs[idx].data(), wbufs[idx].data(), kBlockSize), 0)
+    EXPECT_EQ(std::memcmp(rbufs[idx].data(), wbufs[idx].data(), kBlockSize), 0)
         << "data mismatch at offset " << idx * kBlockSize;
   }
 }
@@ -531,7 +516,6 @@ TYPED_TEST(AsyncEngineTypedTest, DoubleCloseSafe) {
   this->engine_.Close();
   EXPECT_NO_THROW(this->engine_.Close());
 }
-
 
 }  // namespace
 }  // namespace cfio

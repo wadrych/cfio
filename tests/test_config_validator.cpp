@@ -1,13 +1,12 @@
 /// @file test_config_validator.cpp
 /// @brief Unit tests for ConfigValidator.
 
-#include "config/config_validator.h"
-
 #include <stdexcept>
 #include <vector>
 
 #include <gtest/gtest.h>
 
+#include "config/config_validator.h"
 #include "engine/engine_factory.h"
 
 namespace cfio {
@@ -62,8 +61,7 @@ TEST(ConfigValidatorTest, ValidBoundaryIODepth1) {
 }
 
 TEST(ConfigValidatorTest, ValidMultipleJobs) {
-  std::vector<JobConfig> configs = {MakeValidConfig("job-a"),
-                                    MakeValidConfig("job-b")};
+  std::vector<JobConfig> configs = {MakeValidConfig("job-a"), MakeValidConfig("job-b")};
   EXPECT_NO_THROW(ConfigValidator::ValidateAll(configs));
 }
 
@@ -91,8 +89,8 @@ TEST(ConfigValidatorTest, BlockSizeZero) {
 
 TEST(ConfigValidatorTest, BlockSizeNotMultipleOfAlignment) {
   auto c = MakeValidConfig();
-  c.block_size = 6144;   // 6k
-  c.alignment = 4096;    // 4k
+  c.block_size = 6144;  // 6k
+  c.alignment = 4096;   // 4k
   c.file_size = 1048576;
   EXPECT_THROW(ConfigValidator::Validate(c), std::runtime_error);
 }
@@ -155,8 +153,7 @@ TEST(ConfigValidatorTest, EmptyName) {
 // --- Multi-job validation (ValidateAll) ---
 
 TEST(ConfigValidatorTest, DuplicateNames) {
-  std::vector<JobConfig> configs = {MakeValidConfig("same"),
-                                    MakeValidConfig("same")};
+  std::vector<JobConfig> configs = {MakeValidConfig("same"), MakeValidConfig("same")};
   EXPECT_THROW(ConfigValidator::ValidateAll(configs), std::runtime_error);
 }
 

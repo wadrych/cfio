@@ -12,7 +12,7 @@
 namespace cfio {
 
 /// Abstract interface for parsing a config file into a list of job
-/// configurations. 
+/// configurations.
 class IConfigParser {
  public:
   virtual ~IConfigParser() = default;
@@ -22,8 +22,7 @@ class IConfigParser {
   /// @return A vector of parsed job configurations.
   /// @throws std::runtime_error on I/O errors or malformed content.
   /// @throws std::invalid_argument on invalid field values.
-  virtual std::vector<JobConfig> Parse(
-      const std::filesystem::path& path) const = 0;
+  virtual std::vector<JobConfig> Parse(const std::filesystem::path& path) const = 0;
 };
 
 }  // namespace cfio

@@ -15,11 +15,7 @@ int main(int argc, char* argv[]) {
   cfio::CliOptions opts;
 
   CLI::App app{"C-FIO: Custom Flexible IO Tester"};
-
-<<<<<<< HEAD
-=======
-  // Required: path to job definition file 
->>>>>>> e697ac1 (wired job parsers and validation to main)
+  
   app.add_option("--config", opts.config_path, "Path to job config file")
       ->required()
       ->check(CLI::ExistingFile);
@@ -28,38 +24,24 @@ int main(int argc, char* argv[]) {
       ->default_val(60)
       ->check(CLI::PositiveNumber);
 
-<<<<<<< HEAD
-=======
-  // Results output directory
->>>>>>> e697ac1 (wired job parsers and validation to main)
   app.add_option("--output-dir", opts.output_dir, "Results output directory");
 
   app.add_option("--ui", opts.ui_backend, "UI backend")
       ->default_val("terminal")
       ->check(CLI::IsMember({"terminal", "tui", "qt"}));
 
-<<<<<<< HEAD
-=======
-  // If neither is given, direct_override stays nullopt
->>>>>>> e697ac1 (wired job parsers and validation to main)
   bool direct_flag = false;
   bool no_direct_flag = false;
-  auto* direct_opt =
-      app.add_flag("--direct", direct_flag, "Force O_DIRECT on for all jobs");
+  auto* direct_opt = app.add_flag("--direct", direct_flag, "Force O_DIRECT on for all jobs");
   auto* no_direct_opt =
       app.add_flag("--no-direct", no_direct_flag, "Force O_DIRECT off for all jobs");
   direct_opt->excludes(no_direct_opt);
   no_direct_opt->excludes(direct_opt);
 
   std::string engine_str;
-  auto* engine_opt =
-      app.add_option("--engine", engine_str, "Override IO engine for all jobs");
+  auto* engine_opt = app.add_option("--engine", engine_str, "Override IO engine for all jobs");
   engine_opt->check(CLI::IsMember(cfio::EngineFactory::KnownEngines()));
 
-<<<<<<< HEAD
-=======
-  // Verbose logging 
->>>>>>> e697ac1 (wired job parsers and validation to main)
   app.add_flag("--verbose", opts.verbose, "Enable verbose debug logging");
 
   app.add_flag("--keep-files", opts.keep_files, "Don't delete test files after run");
@@ -120,10 +102,8 @@ int main(int argc, char* argv[]) {
 
     log->info("validated {} job(s)", jobs.size());
     for (const auto& job : jobs) {
-      log->info("  [{}] engine={} rw={} bs={} size={}",
-                job.name, job.engine,
-                cfio::JobConfig::ToString(job.rw_mode),
-                cfio::SizeParser::Format(job.block_size),
+      log->info("  [{}] engine={} rw={} bs={} size={}", job.name, job.engine,
+                cfio::JobConfig::ToString(job.rw_mode), cfio::SizeParser::Format(job.block_size),
                 cfio::SizeParser::Format(job.file_size));
     }
 

@@ -26,8 +26,7 @@ JobConfig ParseJob(const nlohmann::json& job, size_t index) {
                              "]: missing or invalid 'name': " + e.what());
   }
 
-  const std::string ctx = "job[" + std::to_string(index) + "] '" +
-                           config.name + "': ";
+  const std::string ctx = "job[" + std::to_string(index) + "] '" + config.name + "': ";
 
   try {
     // Required fields.
@@ -37,10 +36,10 @@ JobConfig ParseJob(const nlohmann::json& job, size_t index) {
     config.rw_mode = JobConfig::ParseRWMode(rw_str);
     config.access_pattern = JobConfig::DeriveAccessPattern(config.rw_mode);
 
-    config.block_size = SizeParser::Parse(
-        job.at("bs").get<std::string>(), SizeParser::AllowedSuffixes::kKM);
-    config.file_size = SizeParser::Parse(
-        job.at("size").get<std::string>(), SizeParser::AllowedSuffixes::kKMG);
+    config.block_size =
+        SizeParser::Parse(job.at("bs").get<std::string>(), SizeParser::AllowedSuffixes::kKM);
+    config.file_size =
+        SizeParser::Parse(job.at("size").get<std::string>(), SizeParser::AllowedSuffixes::kKMG);
 
     // Optional fields with defaults per the config schema.
     config.iodepth = job.value("iodepth", 1);
@@ -55,8 +54,7 @@ JobConfig ParseJob(const nlohmann::json& job, size_t index) {
     }
 
     const auto align_str = job.value("align", std::string{"4k"});
-    config.alignment = SizeParser::Parse(
-        align_str, SizeParser::AllowedSuffixes::kKM);
+    config.alignment = SizeParser::Parse(align_str, SizeParser::AllowedSuffixes::kKM);
 
   } catch (const nlohmann::json::exception& e) {
     throw std::runtime_error(ctx + e.what());
@@ -71,38 +69,32 @@ JobConfig ParseJob(const nlohmann::json& job, size_t index) {
 
 }  // namespace
 
-std::vector<JobConfig> JsonParser::Parse(
-    const std::filesystem::path& path) const {
+std::vector<JobConfig> JsonParser::Parse(const std::filesystem::path& path) const {
   std::ifstream file(path);
   if (!file.is_open()) {
-    throw std::runtime_error("cannot open config file: '" +
-                             path.string() + "'");
+    throw std::runtime_error("cannot open config file: '" + path.string() + "'");
   }
 
   nlohmann::json root;
   try {
     root = nlohmann::json::parse(file);
   } catch (const nlohmann::json::exception& e) {
-    throw std::runtime_error("JSON parse error in '" + path.string() +
-                             "': " + e.what());
+    throw std::runtime_error("JSON parse error in '" + path.string() + "': " + e.what());
   }
 
   // Root must be a JSON object. Anything else (array, number, null) is
   // malformed config.
   if (!root.is_object()) {
-    throw std::runtime_error("config root must be a JSON object in '" +
-                             path.string() + "'");
+    throw std::runtime_error("config root must be a JSON object in '" + path.string() + "'");
   }
 
   if (!root.contains("jobs")) {
-    throw std::runtime_error("missing 'jobs' key in '" +
-                             path.string() + "'");
+    throw std::runtime_error("missing 'jobs' key in '" + path.string() + "'");
   }
 
   const auto& jobs_value = root.at("jobs");
   if (!jobs_value.is_array()) {
-    throw std::runtime_error("'jobs' must be an array in '" +
-                             path.string() + "'");
+    throw std::runtime_error("'jobs' must be an array in '" + path.string() + "'");
   }
 
   std::vector<JobConfig> configs;
@@ -117,8 +109,7 @@ std::vector<JobConfig> JsonParser::Parse(
       throw;
     } catch (const std::exception& e) {
       // Catch-all for any unexpected exception type.
-      throw std::runtime_error("job[" + std::to_string(i) + "]: " +
-                               e.what());
+      throw std::runtime_error("job[" + std::to_string(i) + "]: " + e.what());
     }
   }
 

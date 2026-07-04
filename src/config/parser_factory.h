@@ -20,8 +20,7 @@ class ParserFactory {
   /// @param config_path Path to the configuration file.
   /// @return A parser capable of reading the file format.
   /// @throws std::invalid_argument if the file extension is not supported.
-  static std::unique_ptr<IConfigParser> Create(
-      const std::filesystem::path& config_path);
+  static std::unique_ptr<IConfigParser> Create(const std::filesystem::path& config_path);
 };
 
 }  // namespace cfio

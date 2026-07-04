@@ -2,14 +2,14 @@
 /// @brief Unit tests for AlignedBuffer RAII wrapper.
 ///
 
-#include "telemetry/aligned_buffer.h"
-
 #include <cstdint>
 #include <cstring>
 #include <stdexcept>
 #include <utility>
 
 #include <gtest/gtest.h>
+
+#include "telemetry/aligned_buffer.h"
 
 namespace cfio {
 namespace {

@@ -1,11 +1,6 @@
 /// @file test_config_parser.cpp
 /// @brief Unit tests for JSON/CSV parsers, ParserFactory, and round-trip.
 
-#include "config/csv_parser.h"
-#include "config/json_parser.h"
-#include "config/parser_factory.h"
-#include "config/config_validator.h"
-
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
@@ -14,21 +9,24 @@
 
 #include <gtest/gtest.h>
 
+#include "config/config_validator.h"
+#include "config/csv_parser.h"
+#include "config/json_parser.h"
+#include "config/parser_factory.h"
+
 namespace cfio {
 
 class ConfigParserTest : public ::testing::Test {
  protected:
   void SetUp() override {
     auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
-    temp_dir_ = std::filesystem::path(::testing::TempDir()) /
-                ("cfio_" + std::string(info->name()));
+    temp_dir_ = std::filesystem::path(::testing::TempDir()) / ("cfio_" + std::string(info->name()));
     std::filesystem::create_directories(temp_dir_);
   }
 
   void TearDown() override { std::filesystem::remove_all(temp_dir_); }
 
-  std::filesystem::path WriteFile(const std::string& name,
-                                  const std::string& content) {
+  std::filesystem::path WriteFile(const std::string& name, const std::string& content) {
     auto path = temp_dir_ / name;
     std::ofstream out(path);
     out << content;
@@ -215,9 +213,9 @@ TEST_F(ConfigParserTest, JsonEmptyFile) {
 
 TEST_F(ConfigParserTest, CsvValidMultiJob) {
   auto path = WriteFile("multi.csv",
-      "name,engine,rw,bs,size,iodepth,direct,rwmixread,filename,align\n"
-      "j1,io_uring,randread,4k,1g,32,true,100,/tmp/f1.dat,4k\n"
-      "j2,psync,write,128k,2g,1,false,50,/tmp/f2.dat,4k\n");
+                        "name,engine,rw,bs,size,iodepth,direct,rwmixread,filename,align\n"
+                        "j1,io_uring,randread,4k,1g,32,true,100,/tmp/f1.dat,4k\n"
+                        "j2,psync,write,128k,2g,1,false,50,/tmp/f2.dat,4k\n");
 
   CsvParser parser;
   auto configs = parser.Parse(path);
@@ -250,8 +248,8 @@ TEST_F(ConfigParserTest, CsvValidMultiJob) {
 
 TEST_F(ConfigParserTest, CsvDefaultsApplied) {
   auto path = WriteFile("defaults.csv",
-      "name,engine,rw,bs,size\n"
-      "def,psync,read,4k,1g\n");
+                        "name,engine,rw,bs,size\n"
+                        "def,psync,read,4k,1g\n");
 
   CsvParser parser;
   auto configs = parser.Parse(path);
@@ -268,8 +266,8 @@ TEST_F(ConfigParserTest, CsvDefaultsApplied) {
 
 TEST_F(ConfigParserTest, CsvEmptyOptionalCells) {
   auto path = WriteFile("empty_opt.csv",
-      "name,engine,rw,bs,size,iodepth,direct,rwmixread,filename,align\n"
-      "e,psync,read,4k,1g,,,,,\n");
+                        "name,engine,rw,bs,size,iodepth,direct,rwmixread,filename,align\n"
+                        "e,psync,read,4k,1g,,,,,\n");
 
   CsvParser parser;
   auto configs = parser.Parse(path);
@@ -293,72 +291,72 @@ TEST_F(ConfigParserTest, CsvHeaderOnly) {
 
 TEST_F(ConfigParserTest, CsvMissingRequiredColumn) {
   auto path = WriteFile("t.csv",
-      "name,rw,bs,size\n"
-      "x,read,4k,1g\n");
+                        "name,rw,bs,size\n"
+                        "x,read,4k,1g\n");
   CsvParser parser;
   EXPECT_THROW(parser.Parse(path), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, CsvEmptyRequiredName) {
   auto path = WriteFile("t.csv",
-      "name,engine,rw,bs,size\n"
-      ",psync,read,4k,1g\n");
+                        "name,engine,rw,bs,size\n"
+                        ",psync,read,4k,1g\n");
   CsvParser parser;
   EXPECT_THROW(parser.Parse(path), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, CsvEmptyRequiredEngine) {
   auto path = WriteFile("t.csv",
-      "name,engine,rw,bs,size\n"
-      "x,,read,4k,1g\n");
+                        "name,engine,rw,bs,size\n"
+                        "x,,read,4k,1g\n");
   CsvParser parser;
   EXPECT_THROW(parser.Parse(path), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, CsvBadRwValue) {
   auto path = WriteFile("t.csv",
-      "name,engine,rw,bs,size\n"
-      "x,psync,invalid,4k,1g\n");
+                        "name,engine,rw,bs,size\n"
+                        "x,psync,invalid,4k,1g\n");
   CsvParser parser;
   EXPECT_THROW(parser.Parse(path), std::invalid_argument);
 }
 
 TEST_F(ConfigParserTest, CsvBadDirectValue) {
   auto path = WriteFile("t.csv",
-      "name,engine,rw,bs,size,direct\n"
-      "x,psync,read,4k,1g,yes\n");
+                        "name,engine,rw,bs,size,direct\n"
+                        "x,psync,read,4k,1g,yes\n");
   CsvParser parser;
   EXPECT_THROW(parser.Parse(path), std::invalid_argument);
 }
 
 TEST_F(ConfigParserTest, CsvBadIodepthNotInt) {
   auto path = WriteFile("t.csv",
-      "name,engine,rw,bs,size,iodepth\n"
-      "x,psync,read,4k,1g,abc\n");
+                        "name,engine,rw,bs,size,iodepth\n"
+                        "x,psync,read,4k,1g,abc\n");
   CsvParser parser;
   EXPECT_THROW(parser.Parse(path), std::invalid_argument);
 }
 
 TEST_F(ConfigParserTest, CsvIodepthTrailingJunk) {
   auto path = WriteFile("t.csv",
-      "name,engine,rw,bs,size,iodepth\n"
-      "x,psync,read,4k,1g,32x\n");
+                        "name,engine,rw,bs,size,iodepth\n"
+                        "x,psync,read,4k,1g,32x\n");
   CsvParser parser;
   EXPECT_THROW(parser.Parse(path), std::invalid_argument);
 }
 
 TEST_F(ConfigParserTest, CsvBadRwmixread) {
   auto path = WriteFile("t.csv",
-      "name,engine,rw,bs,size,rwmixread\n"
-      "x,psync,read,4k,1g,abc\n");
+                        "name,engine,rw,bs,size,rwmixread\n"
+                        "x,psync,read,4k,1g,abc\n");
   CsvParser parser;
   EXPECT_THROW(parser.Parse(path), std::invalid_argument);
 }
 
 TEST_F(ConfigParserTest, CsvBadBsSuffix) {
   auto path = WriteFile("t.csv",
-      "name,engine,rw,bs,size\n"
-      "x,psync,read,4g,1g\n");
+                        "name,engine,rw,bs,size\n"
+                        "x,psync,read,4g,1g\n");
   CsvParser parser;
   EXPECT_THROW(parser.Parse(path), std::invalid_argument);
 }
@@ -371,8 +369,8 @@ TEST_F(ConfigParserTest, CsvNonexistentFile) {
 TEST_F(ConfigParserTest, CsvColumnOrderIndependence) {
   // Shuffled column order — csv-parser uses column names, not positions.
   auto path = WriteFile("shuffled.csv",
-      "size,name,bs,engine,rw\n"
-      "1g,x,4k,psync,read\n");
+                        "size,name,bs,engine,rw\n"
+                        "1g,x,4k,psync,read\n");
 
   CsvParser parser;
   auto configs = parser.Parse(path);
@@ -449,9 +447,9 @@ TEST_F(ConfigParserTest, JsonParseValidate) {
 
 TEST_F(ConfigParserTest, CsvParseValidate) {
   auto path = WriteFile("rt.csv",
-      "name,engine,rw,bs,size,iodepth,direct,rwmixread,filename,align\n"
-      "rt1,io_uring,randread,4k,1m,32,true,70,/tmp/rt1.dat,4k\n"
-      "rt2,psync,write,8k,1m,1,false,50,/tmp/rt2.dat,4k\n");
+                        "name,engine,rw,bs,size,iodepth,direct,rwmixread,filename,align\n"
+                        "rt1,io_uring,randread,4k,1m,32,true,70,/tmp/rt1.dat,4k\n"
+                        "rt2,psync,write,8k,1m,1,false,50,/tmp/rt2.dat,4k\n");
 
   CsvParser parser;
   auto configs = parser.Parse(path);

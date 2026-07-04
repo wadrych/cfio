@@ -13,9 +13,8 @@ namespace cfio {
 AlignedBuffer::AlignedBuffer(size_t alignment, size_t size)
     : data_(nullptr), size_(size), alignment_(alignment) {
   if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
-    throw std::invalid_argument(
-        "alignment must be a positive power of 2, got " +
-        std::to_string(alignment));
+    throw std::invalid_argument("alignment must be a positive power of 2, got " +
+                                std::to_string(alignment));
   }
 
   if (size == 0) {
@@ -23,12 +22,11 @@ AlignedBuffer::AlignedBuffer(size_t alignment, size_t size)
   }
 
   if (size % alignment != 0) {
-    throw std::invalid_argument(
-        "size (" + std::to_string(size) +
-        ") must be a multiple of alignment (" + std::to_string(alignment) +
-        "), required by aligned_alloc");
+    throw std::invalid_argument("size (" + std::to_string(size) +
+                                ") must be a multiple of alignment (" + std::to_string(alignment) +
+                                "), required by aligned_alloc");
   }
-  
+
   data_ = std::aligned_alloc(alignment, size);
   if (data_ == nullptr) {
     throw std::bad_alloc();
@@ -42,7 +40,8 @@ AlignedBuffer::~AlignedBuffer() {
 AlignedBuffer::AlignedBuffer(AlignedBuffer&& other) noexcept
     : data_(std::exchange(other.data_, nullptr)),
       size_(std::exchange(other.size_, 0)),
-      alignment_(std::exchange(other.alignment_, 0)) {}
+      alignment_(std::exchange(other.alignment_, 0)) {
+}
 
 AlignedBuffer& AlignedBuffer::operator=(AlignedBuffer&& other) noexcept {
   std::swap(data_, other.data_);

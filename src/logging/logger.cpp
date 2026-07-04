@@ -1,9 +1,9 @@
+#include "logging/logger.h"
+
 #include <stdexcept>
 
 #include <spdlog/async.h>
 #include <spdlog/sinks/basic_file_sink.h>
-
-#include "logging/logger.h"
 
 namespace cfio {
 
@@ -17,12 +17,10 @@ void Logger::init(const std::filesystem::path& log_path, bool verbose) {
   // 8192-slot queue, 1 background thread.
   spdlog::init_thread_pool(8192, 1);
 
-  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-      log_path.string(), true);
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_path.string(), true);
 
   logger_ = std::make_shared<spdlog::async_logger>(
-      "cfio", std::move(file_sink), spdlog::thread_pool(),
-      spdlog::async_overflow_policy::block);
+      "cfio", std::move(file_sink), spdlog::thread_pool(), spdlog::async_overflow_policy::block);
 
   logger_->set_level(verbose ? spdlog::level::debug : spdlog::level::info);
   logger_->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%l] [tid %t] %v");

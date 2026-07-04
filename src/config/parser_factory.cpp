@@ -14,8 +14,7 @@
 
 namespace cfio {
 
-std::unique_ptr<IConfigParser> ParserFactory::Create(
-    const std::filesystem::path& config_path) {
+std::unique_ptr<IConfigParser> ParserFactory::Create(const std::filesystem::path& config_path) {
   auto ext = config_path.extension().string();
   std::transform(ext.begin(), ext.end(), ext.begin(),
                  [](unsigned char c) { return std::tolower(c); });
@@ -27,8 +26,7 @@ std::unique_ptr<IConfigParser> ParserFactory::Create(
     return std::make_unique<CsvParser>();
   }
 
-  throw std::invalid_argument("unsupported config file extension: '" +
-                              ext + "'");
+  throw std::invalid_argument("unsupported config file extension: '" + ext + "'");
 }
 
 }  // namespace cfio

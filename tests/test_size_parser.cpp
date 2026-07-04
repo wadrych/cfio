@@ -1,12 +1,12 @@
 /// @file test_size_parser.cpp
 /// @brief Unit tests for the SizeParser utility.
 
-#include "config/size_parser.h"
-
 #include <stdexcept>
 #include <string>
 
 #include <gtest/gtest.h>
+
+#include "config/size_parser.h"
 
 namespace cfio {
 namespace {
@@ -15,9 +15,13 @@ using Allowed = SizeParser::AllowedSuffixes;
 
 // --- Parse: valid inputs with default kKMG ---
 
-TEST(SizeParserParse, KiloLower) { EXPECT_EQ(SizeParser::Parse("4k"), 4096U); }
+TEST(SizeParserParse, KiloLower) {
+  EXPECT_EQ(SizeParser::Parse("4k"), 4096U);
+}
 
-TEST(SizeParserParse, KiloUpper) { EXPECT_EQ(SizeParser::Parse("4K"), 4096U); }
+TEST(SizeParserParse, KiloUpper) {
+  EXPECT_EQ(SizeParser::Parse("4K"), 4096U);
+}
 
 TEST(SizeParserParse, MegaLower) {
   EXPECT_EQ(SizeParser::Parse("1m"), 1048576U);
@@ -43,7 +47,9 @@ TEST(SizeParserParse, NoSuffixSmall) {
   EXPECT_EQ(SizeParser::Parse("512"), 512U);
 }
 
-TEST(SizeParserParse, NoSuffixOne) { EXPECT_EQ(SizeParser::Parse("1"), 1U); }
+TEST(SizeParserParse, NoSuffixOne) {
+  EXPECT_EQ(SizeParser::Parse("1"), 1U);
+}
 
 TEST(SizeParserParse, LargerKilo) {
   EXPECT_EQ(SizeParser::Parse("128k"), 131072U);
@@ -59,13 +65,21 @@ TEST(SizeParserParse, LargerGiga) {
 
 // --- Parse: zero values ---
 
-TEST(SizeParserParse, ZeroNoSuffix) { EXPECT_EQ(SizeParser::Parse("0"), 0U); }
+TEST(SizeParserParse, ZeroNoSuffix) {
+  EXPECT_EQ(SizeParser::Parse("0"), 0U);
+}
 
-TEST(SizeParserParse, ZeroWithK) { EXPECT_EQ(SizeParser::Parse("0k"), 0U); }
+TEST(SizeParserParse, ZeroWithK) {
+  EXPECT_EQ(SizeParser::Parse("0k"), 0U);
+}
 
-TEST(SizeParserParse, ZeroWithM) { EXPECT_EQ(SizeParser::Parse("0m"), 0U); }
+TEST(SizeParserParse, ZeroWithM) {
+  EXPECT_EQ(SizeParser::Parse("0m"), 0U);
+}
 
-TEST(SizeParserParse, ZeroWithG) { EXPECT_EQ(SizeParser::Parse("0g"), 0U); }
+TEST(SizeParserParse, ZeroWithG) {
+  EXPECT_EQ(SizeParser::Parse("0g"), 0U);
+}
 
 // --- Parse: invalid inputs ---
 
@@ -130,8 +144,7 @@ TEST(SizeParserParse, OverflowWithSuffix) {
 }
 
 TEST(SizeParserParse, OverflowNoSuffix) {
-  EXPECT_THROW(SizeParser::Parse("18446744073709551616"),
-               std::invalid_argument);
+  EXPECT_THROW(SizeParser::Parse("18446744073709551616"), std::invalid_argument);
 }
 
 TEST(SizeParserParse, BoundaryLargeValid) {
@@ -141,7 +154,9 @@ TEST(SizeParserParse, BoundaryLargeValid) {
 
 // --- Format ---
 
-TEST(SizeParserFormat, Zero) { EXPECT_EQ(SizeParser::Format(0), "0"); }
+TEST(SizeParserFormat, Zero) {
+  EXPECT_EQ(SizeParser::Format(0), "0");
+}
 
 TEST(SizeParserFormat, ExactKilo) {
   EXPECT_EQ(SizeParser::Format(4096), "4K");

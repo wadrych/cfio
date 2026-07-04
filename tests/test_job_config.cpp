@@ -1,11 +1,11 @@
 /// @file test_job_config.cpp
 /// @brief Unit tests for JobConfig helper methods.
 
-#include "config/job_config.h"
-
 #include <stdexcept>
 
 #include <gtest/gtest.h>
+
+#include "config/job_config.h"
 
 namespace cfio {
 namespace {
@@ -49,33 +49,27 @@ TEST(JobConfigParseRWMode, EmptyThrows) {
 // --- DeriveAccessPattern ---
 
 TEST(JobConfigDerivePattern, ReadIsSequential) {
-  EXPECT_EQ(JobConfig::DeriveAccessPattern(RWMode::kRead),
-            AccessPattern::kSequential);
+  EXPECT_EQ(JobConfig::DeriveAccessPattern(RWMode::kRead), AccessPattern::kSequential);
 }
 
 TEST(JobConfigDerivePattern, WriteIsSequential) {
-  EXPECT_EQ(JobConfig::DeriveAccessPattern(RWMode::kWrite),
-            AccessPattern::kSequential);
+  EXPECT_EQ(JobConfig::DeriveAccessPattern(RWMode::kWrite), AccessPattern::kSequential);
 }
 
 TEST(JobConfigDerivePattern, ReadWriteIsSequential) {
-  EXPECT_EQ(JobConfig::DeriveAccessPattern(RWMode::kReadWrite),
-            AccessPattern::kSequential);
+  EXPECT_EQ(JobConfig::DeriveAccessPattern(RWMode::kReadWrite), AccessPattern::kSequential);
 }
 
 TEST(JobConfigDerivePattern, RandReadIsRandom) {
-  EXPECT_EQ(JobConfig::DeriveAccessPattern(RWMode::kRandRead),
-            AccessPattern::kRandom);
+  EXPECT_EQ(JobConfig::DeriveAccessPattern(RWMode::kRandRead), AccessPattern::kRandom);
 }
 
 TEST(JobConfigDerivePattern, RandWriteIsRandom) {
-  EXPECT_EQ(JobConfig::DeriveAccessPattern(RWMode::kRandWrite),
-            AccessPattern::kRandom);
+  EXPECT_EQ(JobConfig::DeriveAccessPattern(RWMode::kRandWrite), AccessPattern::kRandom);
 }
 
 TEST(JobConfigDerivePattern, RandRWIsRandom) {
-  EXPECT_EQ(JobConfig::DeriveAccessPattern(RWMode::kRandRW),
-            AccessPattern::kRandom);
+  EXPECT_EQ(JobConfig::DeriveAccessPattern(RWMode::kRandRW), AccessPattern::kRandom);
 }
 
 // --- EffectiveIODepth ---

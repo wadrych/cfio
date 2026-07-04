@@ -21,8 +21,7 @@ class JsonParser : public IConfigParser {
   /// @return A vector of parsed job configurations.
   /// @throws std::runtime_error on I/O errors or malformed JSON.
   /// @throws std::invalid_argument on invalid field values.
-  std::vector<JobConfig> Parse(
-      const std::filesystem::path& path) const override;
+  std::vector<JobConfig> Parse(const std::filesystem::path& path) const override;
 };
 
 }  // namespace cfio

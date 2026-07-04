@@ -38,49 +38,39 @@ void ConfigValidator::ValidateAll(const std::vector<JobConfig>& configs) {
 }
 
 void ConfigValidator::ValidateAlignment(const JobConfig& config) {
-  if (config.alignment == 0 ||
-      (config.alignment & (config.alignment - 1)) != 0) {
+  if (config.alignment == 0 || (config.alignment & (config.alignment - 1)) != 0) {
     throw std::runtime_error("job '" + config.name + "': alignment (" +
-                             std::to_string(config.alignment) +
-                             ") must be a positive power of 2");
+                             std::to_string(config.alignment) + ") must be a positive power of 2");
   }
 }
 
 void ConfigValidator::ValidateBlockSize(const JobConfig& config) {
   if (config.block_size == 0) {
-    throw std::runtime_error("job '" + config.name +
-                             "': block_size must be greater than 0");
+    throw std::runtime_error("job '" + config.name + "': block_size must be greater than 0");
   }
   if (config.block_size % config.alignment != 0) {
     throw std::runtime_error(
-        "job '" + config.name + "': block_size (" +
-        std::to_string(config.block_size) +
-        ") must be a positive multiple of alignment (" +
-        std::to_string(config.alignment) + ")");
+        "job '" + config.name + "': block_size (" + std::to_string(config.block_size) +
+        ") must be a positive multiple of alignment (" + std::to_string(config.alignment) + ")");
   }
 }
 
 void ConfigValidator::ValidateFileSize(const JobConfig& config) {
   if (config.file_size < config.block_size) {
-    throw std::runtime_error(
-        "job '" + config.name + "': file_size (" +
-        std::to_string(config.file_size) +
-        ") must be >= block_size (" +
-        std::to_string(config.block_size) + ")");
+    throw std::runtime_error("job '" + config.name + "': file_size (" +
+                             std::to_string(config.file_size) + ") must be >= block_size (" +
+                             std::to_string(config.block_size) + ")");
   }
   if (config.file_size % config.alignment != 0) {
     throw std::runtime_error(
-        "job '" + config.name + "': file_size (" +
-        std::to_string(config.file_size) +
-        ") must be a multiple of alignment (" +
-        std::to_string(config.alignment) + ")");
+        "job '" + config.name + "': file_size (" + std::to_string(config.file_size) +
+        ") must be a multiple of alignment (" + std::to_string(config.alignment) + ")");
   }
 }
 
 void ConfigValidator::ValidateEngine(const JobConfig& config) {
   if (!EngineFactory::IsKnownEngine(config.engine)) {
-    throw std::runtime_error("job '" + config.name + "': unknown engine '" +
-                             config.engine + "'");
+    throw std::runtime_error("job '" + config.name + "': unknown engine '" + config.engine + "'");
   }
 }
 
@@ -94,30 +84,25 @@ void ConfigValidator::ValidateRWMode(const JobConfig& config) {
     case RWMode::kRandRW:
       return;
   }
-  throw std::runtime_error("job '" + config.name +
-                           "': invalid rw_mode enum value (" +
-                           std::to_string(static_cast<int>(config.rw_mode)) +
-                           ")");
+  throw std::runtime_error("job '" + config.name + "': invalid rw_mode enum value (" +
+                           std::to_string(static_cast<int>(config.rw_mode)) + ")");
 }
 
 void ConfigValidator::ValidateRWMixRead(const JobConfig& config) {
   if (config.rwmixread < 0 || config.rwmixread > 100) {
     throw std::runtime_error("job '" + config.name + "': rwmixread (" +
-                             std::to_string(config.rwmixread) +
-                             ") must be in range 0-100");
+                             std::to_string(config.rwmixread) + ") must be in range 0-100");
   }
 }
 
 void ConfigValidator::ValidateIODepth(const JobConfig& config) {
   if (config.iodepth < 1) {
     throw std::runtime_error("job '" + config.name + "': iodepth (" +
-                             std::to_string(config.iodepth) +
-                             ") must be >= 1");
+                             std::to_string(config.iodepth) + ") must be >= 1");
   }
 }
 
-void ConfigValidator::ValidateUniqueNames(
-    const std::vector<JobConfig>& configs) {
+void ConfigValidator::ValidateUniqueNames(const std::vector<JobConfig>& configs) {
   std::unordered_set<std::string> seen;
   for (const auto& config : configs) {
     if (!seen.insert(config.name).second) {

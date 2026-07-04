@@ -3,13 +3,13 @@
 
 #include "config/csv_parser.h"
 
+#include <csv.hpp>
+
 #include <algorithm>
 #include <cctype>
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
-
-#include <csv.hpp>
 
 #include "config/size_parser.h"
 
@@ -17,8 +17,7 @@ namespace cfio {
 
 namespace {
 
-constexpr const char* kRequiredColumns[] = {
-    "name", "engine", "rw", "bs", "size"};
+constexpr const char* kRequiredColumns[] = {"name", "engine", "rw", "bs", "size"};
 
 /// Parse an integer from a CSV string.
 int ParseInt(const std::string& str, const std::string& field_name) {
@@ -27,15 +26,12 @@ int ParseInt(const std::string& str, const std::string& field_name) {
   try {
     value = std::stoi(str, &pos);
   } catch (const std::out_of_range&) {
-    throw std::invalid_argument("'" + field_name + "' value out of range: '" +
-                                str + "'");
+    throw std::invalid_argument("'" + field_name + "' value out of range: '" + str + "'");
   } catch (const std::invalid_argument&) {
-    throw std::invalid_argument("'" + field_name +
-                                "' is not a valid integer: '" + str + "'");
+    throw std::invalid_argument("'" + field_name + "' is not a valid integer: '" + str + "'");
   }
   if (pos != str.size()) {
-    throw std::invalid_argument("'" + field_name +
-                                "' has trailing characters: '" + str + "'");
+    throw std::invalid_argument("'" + field_name + "' has trailing characters: '" + str + "'");
   }
   return value;
 }
@@ -51,8 +47,7 @@ bool ParseBool(const std::string& str, const std::string& field_name) {
   if (lower == "false" || lower == "0") {
     return false;
   }
-  throw std::invalid_argument("'" + field_name +
-                              "' must be true/false/1/0, got: '" + str + "'");
+  throw std::invalid_argument("'" + field_name + "' must be true/false/1/0, got: '" + str + "'");
 }
 
 /// Parse a single CSV row into a JobConfig.
@@ -76,12 +71,10 @@ JobConfig ParseJob(const csv::CSVRow& row, size_t index,
                              "]: error reading 'name': " + e.what());
   }
   if (config.name.empty()) {
-    throw std::runtime_error("row[" + std::to_string(index) +
-                             "]: 'name' is empty");
+    throw std::runtime_error("row[" + std::to_string(index) + "]: 'name' is empty");
   }
 
-  const std::string ctx = "row[" + std::to_string(index) + "] '" +
-                           config.name + "': ";
+  const std::string ctx = "row[" + std::to_string(index) + "] '" + config.name + "': ";
 
   try {
     // Required string fields.
@@ -101,28 +94,23 @@ JobConfig ParseJob(const csv::CSVRow& row, size_t index,
     if (bs_str.empty()) {
       throw std::runtime_error("'bs' is empty");
     }
-    config.block_size = SizeParser::Parse(
-        bs_str, SizeParser::AllowedSuffixes::kKM);
+    config.block_size = SizeParser::Parse(bs_str, SizeParser::AllowedSuffixes::kKM);
 
     auto size_str = row["size"].get<std::string>();
     if (size_str.empty()) {
       throw std::runtime_error("'size' is empty");
     }
-    config.file_size = SizeParser::Parse(
-        size_str, SizeParser::AllowedSuffixes::kKMG);
+    config.file_size = SizeParser::Parse(size_str, SizeParser::AllowedSuffixes::kKMG);
 
     // Optional fields with defaults.
     auto iodepth_str = get_opt("iodepth");
-    config.iodepth = iodepth_str.empty() ? 1 : ParseInt(iodepth_str,
-                                                         "iodepth");
+    config.iodepth = iodepth_str.empty() ? 1 : ParseInt(iodepth_str, "iodepth");
 
     auto direct_str = get_opt("direct");
-    config.direct = direct_str.empty() ? true : ParseBool(direct_str,
-                                                           "direct");
+    config.direct = direct_str.empty() ? true : ParseBool(direct_str, "direct");
 
     auto rwmix_str = get_opt("rwmixread");
-    config.rwmixread = rwmix_str.empty() ? 50 : ParseInt(rwmix_str,
-                                                          "rwmixread");
+    config.rwmixread = rwmix_str.empty() ? 50 : ParseInt(rwmix_str, "rwmixread");
 
     auto filename_str = get_opt("filename");
     if (filename_str.empty()) {
@@ -133,11 +121,9 @@ JobConfig ParseJob(const csv::CSVRow& row, size_t index,
 
     auto align_str = get_opt("align");
     if (align_str.empty()) {
-      config.alignment = SizeParser::Parse(
-          "4k", SizeParser::AllowedSuffixes::kKM);
+      config.alignment = SizeParser::Parse("4k", SizeParser::AllowedSuffixes::kKM);
     } else {
-      config.alignment = SizeParser::Parse(
-          align_str, SizeParser::AllowedSuffixes::kKM);
+      config.alignment = SizeParser::Parse(align_str, SizeParser::AllowedSuffixes::kKM);
     }
 
   } catch (const std::invalid_argument& e) {
@@ -151,29 +137,25 @@ JobConfig ParseJob(const csv::CSVRow& row, size_t index,
 
 }  // namespace
 
-std::vector<JobConfig> CsvParser::Parse(
-    const std::filesystem::path& path) const {
+std::vector<JobConfig> CsvParser::Parse(const std::filesystem::path& path) const {
   csv::CSVReader reader = [&]() {
     try {
       csv::CSVFormat format;
       format.variable_columns(csv::VariableColumnPolicy::KEEP);
       return csv::CSVReader(path.string(), format);
     } catch (const std::exception& e) {
-      throw std::runtime_error("cannot open config file: '" +
-                               path.string() + "': " + e.what());
+      throw std::runtime_error("cannot open config file: '" + path.string() + "': " + e.what());
     }
   }();
 
   // Build column set for optional field existence checks.
   const auto col_names = reader.get_col_names();
-  const std::unordered_set<std::string> columns(col_names.begin(),
-                                                 col_names.end());
+  const std::unordered_set<std::string> columns(col_names.begin(), col_names.end());
 
   // Verify all required columns exist in header.
   for (const auto* required : kRequiredColumns) {
     if (columns.count(required) == 0) {
-      throw std::runtime_error("missing required column '" +
-                               std::string(required) + "' in '" +
+      throw std::runtime_error("missing required column '" + std::string(required) + "' in '" +
                                path.string() + "'");
     }
   }
@@ -189,8 +171,7 @@ std::vector<JobConfig> CsvParser::Parse(
     } catch (const std::runtime_error&) {
       throw;
     } catch (const std::exception& e) {
-      throw std::runtime_error("row[" + std::to_string(row_index) + "]: " +
-                               e.what());
+      throw std::runtime_error("row[" + std::to_string(row_index) + "]: " + e.what());
     }
     ++row_index;
   }

@@ -30,22 +30,22 @@ enum class RWMode {
 
 /// Describes a single IO operation submitted from a worker thread to an engine.
 struct IORequest {
-  off_t offset{};                                      ///< File offset (aligned)
-  void* buffer{};                                      ///< Aligned IO buffer
-  size_t length{};                                     ///< IO size in bytes
-  IODirection direction{};                             ///< Read or write
-  std::chrono::steady_clock::time_point submit_time;   ///< Set just before submitIO()
-  uint64_t id{};                                       ///< Per-worker monotonic counter
+  off_t offset{};                                     ///< File offset (aligned)
+  void* buffer{};                                     ///< Aligned IO buffer
+  size_t length{};                                    ///< IO size in bytes
+  IODirection direction{};                            ///< Read or write
+  std::chrono::steady_clock::time_point submit_time;  ///< Set just before submitIO()
+  uint64_t id{};                                      ///< Per-worker monotonic counter
 };
 
 /// Result of a completed IO operation.
 struct IOCompletion {
-  uint64_t id{};                                       ///< Matches IORequest::id
-  ssize_t bytes_transferred{};                         ///< Actual bytes read/written
-  IODirection direction{};                             ///< Read or write (carried from IORequest)
-  bool success{};                                      ///< True if IO completed without error
-  int error_code{};                                    ///< errno on failure, EIO on short transfer, 0 on success
-  std::chrono::steady_clock::time_point submit_time;   ///< Carried from IORequest
+  uint64_t id{};                ///< Matches IORequest::id
+  ssize_t bytes_transferred{};  ///< Actual bytes read/written
+  IODirection direction{};      ///< Read or write (carried from IORequest)
+  bool success{};               ///< True if IO completed without error
+  int error_code{};             ///< errno on failure, EIO on short transfer, 0 on success
+  std::chrono::steady_clock::time_point submit_time;  ///< Carried from IORequest
 };
 
 }  // namespace cfio
