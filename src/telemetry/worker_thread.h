@@ -89,6 +89,14 @@ class WorkerThread {
   /// @param g_running  Global run flag
   void RunSyncLoop(const std::atomic<bool>& g_running);
 
+  /// @brief IO loop for iodepth greater than 1 (libaio/io_uring engines).
+  ///
+  /// @param g_running  Global run flag
+  void RunAsyncLoop(const std::atomic<bool>& g_running);
+
+  /// @brief Build the next IO request, stamp submit time, and submit it.
+  void SubmitOne();
+
   /// @brief Build the next IO request
   ///
   /// @return A request ready to submit

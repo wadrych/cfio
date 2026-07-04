@@ -47,8 +47,7 @@ void WorkerThread::Run(std::barrier<>& start_barrier, const std::atomic<bool>& g
   if (effective_iodepth == 1) {
     RunSyncLoop(g_running);
   } else {
-    Logger::get()->warn("worker '{}': async IO loop (iodepth {}) not implemented yet", config_.name,
-                        effective_iodepth);
+    RunAsyncLoop(g_running);
   }
 }
 
@@ -57,9 +56,7 @@ void WorkerThread::RunSyncLoop(const std::atomic<bool>& g_running) {
   completions.reserve(1);
 
   while (g_running.load(std::memory_order_relaxed)) {
-    IORequest request = GenerateNextIO();
-    request.submit_time = std::chrono::steady_clock::now();
-    engine_->SubmitIO(request);
+    SubmitOne();
 
     completions.clear();
     engine_->PollCompletions(1, 1, completions);
@@ -69,6 +66,44 @@ void WorkerThread::RunSyncLoop(const std::atomic<bool>& g_running) {
       RecordCompletion(completion, now);
     }
   }
+}
+
+void WorkerThread::RunAsyncLoop(const std::atomic<bool>& g_running) {
+  const int effective_iodepth = config_.EffectiveIODepth();
+
+  std::vector<IOCompletion> completions;
+  completions.reserve(static_cast<size_t>(effective_iodepth));
+
+  int in_flight = 0;
+
+  // pre-fill the queue to iodepth
+  for (int i = 0; i < effective_iodepth && g_running.load(std::memory_order_relaxed); ++i) {
+    SubmitOne();
+    ++in_flight;
+  }
+
+  // drain completions, refill immediately to keep the queue full
+  while (g_running.load(std::memory_order_relaxed) || in_flight > 0) {
+    completions.clear();
+    engine_->PollCompletions(1, effective_iodepth, completions);
+
+    const auto now = std::chrono::steady_clock::now();
+    for (const IOCompletion& completion : completions) {
+      RecordCompletion(completion, now);
+      --in_flight;
+
+      if (g_running.load(std::memory_order_relaxed)) {
+        SubmitOne();
+        ++in_flight;
+      }
+    }
+  }
+}
+
+void WorkerThread::SubmitOne() {
+  IORequest request = GenerateNextIO();
+  request.submit_time = std::chrono::steady_clock::now();
+  engine_->SubmitIO(request);
 }
 
 IORequest WorkerThread::GenerateNextIO() noexcept {
@@ -83,7 +118,6 @@ IORequest WorkerThread::GenerateNextIO() noexcept {
 
 void WorkerThread::RecordCompletion(const IOCompletion& completion,
                                     std::chrono::steady_clock::time_point now) noexcept {
-
   const auto elapsed =
       std::chrono::duration_cast<std::chrono::nanoseconds>(now - completion.submit_time).count();
   histogram_.Record(elapsed > 0 ? static_cast<std::uint64_t>(elapsed) : 0);

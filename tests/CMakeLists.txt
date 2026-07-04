@@ -14,6 +14,7 @@ add_executable(cfio-tests
   test_log2_histogram.cpp
   test_offset_generator.cpp
   test_io_direction_decider.cpp
+  test_worker_thread.cpp
 )
 
 target_link_libraries(cfio-tests
