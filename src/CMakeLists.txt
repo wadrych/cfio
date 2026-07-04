@@ -26,6 +26,7 @@ add_library(cfio-core STATIC
         telemetry/aligned_buffer.cpp
         telemetry/offset_generator.cpp
         telemetry/io_direction_decider.cpp
+        telemetry/worker_thread.cpp
 )
 
 target_include_directories(cfio-core

@@ -1,0 +1,102 @@
+#ifndef CFIO_TELEMETRY_WORKER_THREAD_H_
+#define CFIO_TELEMETRY_WORKER_THREAD_H_
+
+/// @file worker_thread.h
+/// @brief Per single job worker
+
+#include <atomic>
+#include <barrier>
+#include <cstdint>
+#include <memory>
+#include <thread>
+
+#include "config/job_config.h"
+#include "engine/i_engine_io.h"
+#include "telemetry/aligned_buffer.h"
+#include "telemetry/io_direction_decider.h"
+#include "telemetry/log2_histogram.h"
+#include "telemetry/offset_generator.h"
+
+namespace cfio {
+
+/// @brief Runs a benchmark job on its own thread.
+///
+class WorkerThread {
+ public:
+  /// @brief Build a worker and open its engine
+  /// @param config  Job configuration
+  /// @param engine  Engine for the job
+  /// @throws std::system_error if the engine fails to open the target file.
+  WorkerThread(JobConfig config, std::unique_ptr<IEngineIO> engine);
+
+  WorkerThread(const WorkerThread&) = delete;
+  WorkerThread& operator=(const WorkerThread&) = delete;
+  WorkerThread(WorkerThread&&) = delete;
+  WorkerThread& operator=(WorkerThread&&) = delete;
+
+  ~WorkerThread() = default;
+
+  /// @brief Run the worker thread
+  ///
+  /// @param start_barrier  Shared barrier
+  /// @param g_running      Global run flag
+  void Start(std::barrier<>& start_barrier, const std::atomic<bool>& g_running);
+
+  /// @brief Wait for the worker thread to finish.
+  void Join();
+
+  /// @brief Get the latency histogram
+  [[nodiscard]] const Log2Histogram<64, std::uint64_t>& Histogram() const noexcept {
+    return histogram_;
+  }
+
+  /// @brief Get number of completed IO ops
+  [[nodiscard]] std::uint64_t IopsCount() const noexcept {
+    return iops_count_.load(std::memory_order_relaxed);
+  }
+
+  /// @brief Get total bytes read and written
+  [[nodiscard]] std::uint64_t BytesTransferred() const noexcept {
+    return bytes_transferred_.load(std::memory_order_relaxed);
+  }
+
+  /// @brief Get number of failed read ops
+  [[nodiscard]] std::uint64_t ReadErrorCount() const noexcept {
+    return read_error_count_.load(std::memory_order_relaxed);
+  }
+
+  /// @brief Get number of failed write ops
+  [[nodiscard]] std::uint64_t WriteErrorCount() const noexcept {
+    return write_error_count_.load(std::memory_order_relaxed);
+  }
+
+  /// @brief Get worker's job configuration
+  [[nodiscard]] const JobConfig& Config() const noexcept { return config_; }
+
+  /// @brief Check if O_DIRECT stayed effective after the engine opened the file
+  [[nodiscard]] bool DirectEffective() const noexcept { return direct_effective_; }
+
+ private:
+  /// @brief Thread entry point. Waits at the barrier, then run the IO loop.
+  /// @param start_barrier  Barrier for synchronized statart
+  /// @param g_running      Global run flag
+  void Run(std::barrier<>& start_barrier, const std::atomic<bool>& g_running);
+
+  JobConfig config_;
+  std::unique_ptr<IEngineIO> engine_;
+  Log2Histogram<64, std::uint64_t> histogram_;
+  std::atomic<std::uint64_t> iops_count_{0};
+  std::atomic<std::uint64_t> bytes_transferred_{0};
+  std::atomic<std::uint64_t> read_error_count_{0};
+  std::atomic<std::uint64_t> write_error_count_{0};
+  OffsetGenerator offset_gen_;
+  IODirectionDecider direction_decider_;
+  AlignedBuffer io_buffer_;
+  bool direct_effective_ = false;
+  std::uint64_t next_request_id_ = 0;
+  std::jthread thread_;
+};
+
+}  // namespace cfio
+
+#endif  // CFIO_TELEMETRY_WORKER_THREAD_H_
