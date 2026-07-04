@@ -11,6 +11,9 @@ add_executable(cfio-tests
   test_config_parser.cpp
   test_aligned_buffer.cpp
   test_engine_interface.cpp
+  test_log2_histogram.cpp
+  test_offset_generator.cpp
+  test_io_direction_decider.cpp
 )
 
 target_link_libraries(cfio-tests

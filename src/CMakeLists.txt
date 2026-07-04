@@ -24,6 +24,8 @@ add_library(cfio-core STATIC
         engine/libaio_engine.cpp
         engine/sync_engine.cpp
         telemetry/aligned_buffer.cpp
+        telemetry/offset_generator.cpp
+        telemetry/io_direction_decider.cpp
 )
 
 target_include_directories(cfio-core
