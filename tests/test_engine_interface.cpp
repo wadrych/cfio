@@ -518,6 +518,18 @@ TYPED_TEST(AsyncEngineTypedTest, DoubleCloseSafe) {
   EXPECT_NO_THROW(this->engine_.Close());
 }
 
+// Some kernels added O_DIRECT support to tmpfs, so opening with O_DIRECT no
+// longer fails there. Probe instead of assuming, so this suite skips itself
+// on kernels where the fallback path cannot be exercised on tmpfs.
+bool DirectIoRejectedByFs(const std::filesystem::path& path) {
+  const int fd = ::open(path.c_str(), O_RDWR | O_DIRECT);
+  if (fd >= 0) {
+    ::close(fd);
+    return false;
+  }
+  return errno == EINVAL || errno == EOPNOTSUPP;
+}
+
 class DirectFallbackTest : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -529,6 +541,9 @@ class DirectFallbackTest : public ::testing::Test {
       GTEST_SKIP() << "/dev/shm not writable";
     }
     shm_tmp_ = std::make_unique<TempFile>("/dev/shm");
+    if (!DirectIoRejectedByFs(shm_tmp_->path())) {
+      GTEST_SKIP() << "kernel tmpfs accepts O_DIRECT, cannot exercise fallback path";
+    }
   }
 
   void TearDown() override { shm_tmp_.reset(); }
