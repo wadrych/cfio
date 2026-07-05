@@ -17,6 +17,7 @@ add_executable(cfio-tests
   test_worker_thread.cpp
   test_metrics_aggregator.cpp
   test_file_preparator.cpp
+  test_display_factory.cpp
 )
 
 target_link_libraries(cfio-tests

@@ -29,6 +29,7 @@ add_library(cfio-core STATIC
         telemetry/worker_thread.cpp
         telemetry/metrics_aggregator.cpp
         orchestrator/file_preparator.cpp
+        display/display_factory.cpp
 )
 
 target_include_directories(cfio-core
