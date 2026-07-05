@@ -16,6 +16,7 @@ add_executable(cfio-tests
   test_io_direction_decider.cpp
   test_worker_thread.cpp
   test_metrics_aggregator.cpp
+  test_file_preparator.cpp
 )
 
 target_link_libraries(cfio-tests
