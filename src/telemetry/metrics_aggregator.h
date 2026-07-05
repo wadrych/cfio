@@ -58,6 +58,8 @@ class MetricsAggregator {
   [[nodiscard]] BenchmarkResults BuildResults(const CliOptions& opts) const;
 
  private:
+  friend class MetricsAggregatorTestPeer;  // test access
+
   /// @brief Sampling loop. Wakes every 500ms until stop or run flag clears
   /// @param stop       Stop token from the jthread
   /// @param g_running  Global run flag

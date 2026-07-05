@@ -15,6 +15,7 @@ add_executable(cfio-tests
   test_offset_generator.cpp
   test_io_direction_decider.cpp
   test_worker_thread.cpp
+  test_metrics_aggregator.cpp
 )
 
 target_link_libraries(cfio-tests
