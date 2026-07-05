@@ -2,6 +2,7 @@
 /// @brief Unit tests for IO engine interface, factory, and all four engines.
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -515,6 +516,74 @@ TYPED_TEST(AsyncEngineTypedTest, DoubleCloseSafe) {
   }
   this->engine_.Close();
   EXPECT_NO_THROW(this->engine_.Close());
+}
+
+class DirectFallbackTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    struct stat st {};
+    if (::stat("/dev/shm", &st) != 0 || !S_ISDIR(st.st_mode)) {
+      GTEST_SKIP() << "/dev/shm not available";
+    }
+    if (::access("/dev/shm", W_OK) != 0) {
+      GTEST_SKIP() << "/dev/shm not writable";
+    }
+    shm_tmp_ = std::make_unique<TempFile>("/dev/shm");
+  }
+
+  void TearDown() override { shm_tmp_.reset(); }
+
+  std::unique_ptr<TempFile> shm_tmp_;
+};
+
+TEST_F(DirectFallbackTest, FallsBackOnTmpfs_psync) {
+  auto cfg = MakeTestConfig("psync", shm_tmp_->path());
+  cfg.direct = true;
+
+  PsyncEngine engine;
+  engine.Open(cfg);
+  EXPECT_FALSE(engine.IsDirectEnabled());
+  engine.Close();
+  EXPECT_FALSE(engine.IsDirectEnabled());
+}
+
+TEST_F(DirectFallbackTest, FallsBackOnTmpfs_sync) {
+  auto cfg = MakeTestConfig("sync", shm_tmp_->path());
+  cfg.direct = true;
+
+  SyncEngine engine;
+  engine.Open(cfg);
+  EXPECT_FALSE(engine.IsDirectEnabled());
+  engine.Close();
+  EXPECT_FALSE(engine.IsDirectEnabled());
+}
+
+TEST_F(DirectFallbackTest, FallsBackOnTmpfs_io_uring) {
+  auto cfg = MakeTestConfig("io_uring", shm_tmp_->path());
+  cfg.direct = true;
+  cfg.iodepth = 1;
+
+  IoUringEngine engine;
+  if (auto skip = TryOpen(engine, cfg); !skip.empty()) {
+    GTEST_SKIP() << skip;
+  }
+  EXPECT_FALSE(engine.IsDirectEnabled());
+  engine.Close();
+  EXPECT_FALSE(engine.IsDirectEnabled());
+}
+
+TEST_F(DirectFallbackTest, FallsBackOnTmpfs_libaio) {
+  auto cfg = MakeTestConfig("libaio", shm_tmp_->path());
+  cfg.direct = true;
+  cfg.iodepth = 1;
+
+  LibaioEngine engine;
+  if (auto skip = TryOpen(engine, cfg); !skip.empty()) {
+    GTEST_SKIP() << skip;
+  }
+  EXPECT_FALSE(engine.IsDirectEnabled());
+  engine.Close();
+  EXPECT_FALSE(engine.IsDirectEnabled());
 }
 
 }  // namespace
