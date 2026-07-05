@@ -32,6 +32,7 @@ add_library(cfio-core STATIC
         orchestrator/file_preparator.cpp
         display/display_factory.cpp
         display/terminal_display.cpp
+        reporting/results_exporter.cpp
 )
 
 target_include_directories(cfio-core

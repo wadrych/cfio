@@ -1,4 +1,5 @@
 find_package(GTest REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 include(GoogleTest)
 
 enable_testing()
@@ -19,11 +20,13 @@ add_executable(cfio-tests
   test_file_preparator.cpp
   test_display_factory.cpp
   test_terminal_display.cpp
+  test_results_exporter.cpp
 )
 
 target_link_libraries(cfio-tests
   PRIVATE GTest::gtest
   PRIVATE cfio-core
+  PRIVATE nlohmann_json::nlohmann_json
 )
 
 gtest_discover_tests(cfio-tests)
