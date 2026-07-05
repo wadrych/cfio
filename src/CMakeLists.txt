@@ -1,5 +1,6 @@
 # dependencies
 find_package(spdlog REQUIRED)
+find_package(fmt CONFIG REQUIRED)
 find_package(CLI11 REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(unofficial-vincentlaucsb-csv-parser CONFIG REQUIRED)
@@ -30,6 +31,7 @@ add_library(cfio-core STATIC
         telemetry/metrics_aggregator.cpp
         orchestrator/file_preparator.cpp
         display/display_factory.cpp
+        display/terminal_display.cpp
 )
 
 target_include_directories(cfio-core
@@ -40,6 +42,7 @@ target_include_directories(cfio-core
 
 target_link_libraries(cfio-core
         PUBLIC spdlog::spdlog
+        PRIVATE fmt::fmt
         PRIVATE nlohmann_json::nlohmann_json
         PRIVATE unofficial::vincentlaucsb-csv-parser::csv
         PRIVATE ${LIBURING_LIBRARIES}

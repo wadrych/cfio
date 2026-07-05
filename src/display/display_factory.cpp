@@ -7,11 +7,15 @@
 #include <stdexcept>
 #include <string>
 
+#include "display/display_context.h"
+#include "display/terminal_display.h"
+
 namespace cfio {
 
-std::unique_ptr<IDisplay> DisplayFactory::Create(const std::string& ui_backend) {
+std::unique_ptr<IDisplay> DisplayFactory::Create(const std::string& ui_backend,
+                                                 const DisplayContext& context) {
   if (ui_backend == "terminal") {
-    throw std::runtime_error("terminal display not yet implemented");
+    return std::make_unique<TerminalDisplay>(context);
   }
 
   if (ui_backend == "tui") {

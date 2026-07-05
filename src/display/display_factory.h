@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 
+#include "display/display_context.h"
 #include "display/i_display.h"
 
 namespace cfio {
@@ -18,9 +19,11 @@ class DisplayFactory {
 
   /// @brief Create a display backend
   /// @param ui_backend  Backend name
+  /// @param context     Run metadata
   /// @return A new display instance
   /// @throws std::runtime_error if the backend is unknown or not available.
-  static std::unique_ptr<IDisplay> Create(const std::string& ui_backend);
+  static std::unique_ptr<IDisplay> Create(const std::string& ui_backend,
+                                          const DisplayContext& context = {});
 };
 
 }  // namespace cfio
