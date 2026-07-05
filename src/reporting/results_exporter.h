@@ -25,6 +25,7 @@ class ResultsExporter {
   /// @brief Write timeseries
   /// @param time_series Per-sample metrics history.
   /// @param output_dir Existing directory
+  /// @throws std::runtime_error if the output file cannot be opened
   static void ExportCsv(const std::vector<MetricsSnapshot>& time_series,
                         const std::filesystem::path& output_dir);
 };

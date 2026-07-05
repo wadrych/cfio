@@ -1,10 +1,12 @@
 /// @file test_results_exporter.cpp
-/// @brief Unit tests for ResultsExporter JSON summary output.
+/// @brief Unit tests for ResultsExporter JSON summary and CSV time-series output.
 
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -15,6 +17,7 @@
 #include "config/job_config.h"
 #include "reporting/results_exporter.h"
 #include "telemetry/benchmark_results.h"
+#include "telemetry/metrics_snapshot.h"
 
 namespace cfio {
 namespace {
@@ -48,6 +51,30 @@ JobResults MakeJobResults(const std::string& name, RWMode rw, std::uint64_t read
   return job;
 }
 
+constexpr std::string_view kCsvHeader =
+    "timestamp_s,job_name,iops,bw_bytes,lat_p50_ns,lat_p95_ns,lat_p99_ns,errors";
+
+PerJobMetrics MakePerJobMetrics(const std::string& name, std::uint64_t iops_instant,
+                                std::uint64_t bw_instant, std::uint64_t read_errors,
+                                std::uint64_t write_errors) {
+  PerJobMetrics job;
+  job.job_name = name;
+  job.iops_instant = iops_instant;
+  job.bw_instant = bw_instant;
+  job.lat_p50_ns = 8000;
+  job.lat_p95_ns = 32000;
+  job.lat_p99_ns = 45000;
+  job.read_errors = read_errors;
+  job.write_errors = write_errors;
+  return job;
+}
+
+MetricsSnapshot MakeSnapshot(std::vector<PerJobMetrics> jobs) {
+  MetricsSnapshot snapshot;
+  snapshot.jobs = std::move(jobs);
+  return snapshot;
+}
+
 class ResultsExporterTest : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -63,6 +90,16 @@ class ResultsExporterTest : public ::testing::Test {
     nlohmann::json parsed;
     in >> parsed;
     return parsed;
+  }
+
+  std::vector<std::string> ReadTimeseriesLines() const {
+    std::ifstream in(temp_dir_ / "timeseries.csv");
+    std::vector<std::string> lines;
+    std::string line;
+    while (std::getline(in, line)) {
+      lines.push_back(line);
+    }
+    return lines;
   }
 
   std::filesystem::path temp_dir_;
@@ -176,6 +213,65 @@ TEST_F(ResultsExporterTest, ThrowsWhenOutputDirMissing) {
 
   const std::filesystem::path missing = temp_dir_ / "does" / "not" / "exist";
   EXPECT_THROW(ResultsExporter::ExportJson(results, missing), std::runtime_error);
+}
+
+TEST_F(ResultsExporterTest, WritesTimeseriesHeader) {
+  std::vector<MetricsSnapshot> series;
+  series.push_back(MakeSnapshot({MakePerJobMetrics("rand-read-4k", 125432, 513769472, 0, 0)}));
+
+  ResultsExporter::ExportCsv(series, temp_dir_);
+
+  ASSERT_TRUE(std::filesystem::exists(temp_dir_ / "timeseries.csv"));
+  const std::vector<std::string> lines = ReadTimeseriesLines();
+  ASSERT_FALSE(lines.empty());
+  EXPECT_EQ(lines.front(), std::string(kCsvHeader));
+}
+
+TEST_F(ResultsExporterTest, WritesOneRowPerJobPerSecond) {
+  const std::vector<PerJobMetrics> jobs = {
+      MakePerJobMetrics("rand-read-4k", 125432, 513769472, 0, 0),
+      MakePerJobMetrics("seq-write-128k", 48291, 198066176, 0, 0)};
+  std::vector<MetricsSnapshot> series;
+  series.push_back(MakeSnapshot(jobs));
+  series.push_back(MakeSnapshot(jobs));
+
+  ResultsExporter::ExportCsv(series, temp_dir_);
+
+  const std::vector<std::string> lines = ReadTimeseriesLines();
+  ASSERT_EQ(lines.size(), 5U);
+  EXPECT_TRUE(lines[1].starts_with("1,rand-read-4k,"));
+  EXPECT_TRUE(lines[2].starts_with("1,seq-write-128k,"));
+  EXPECT_TRUE(lines[3].starts_with("2,rand-read-4k,"));
+  EXPECT_TRUE(lines[4].starts_with("2,seq-write-128k,"));
+}
+
+TEST_F(ResultsExporterTest, MapsInstantaneousFieldsAndCombinedErrors) {
+  std::vector<MetricsSnapshot> series;
+  series.push_back(MakeSnapshot({MakePerJobMetrics("job", 1000, 4096000, 3, 7)}));
+
+  ResultsExporter::ExportCsv(series, temp_dir_);
+
+  const std::vector<std::string> lines = ReadTimeseriesLines();
+  ASSERT_EQ(lines.size(), 2U);
+  EXPECT_EQ(lines[1], "1,job,1000,4096000,8000,32000,45000,10");
+}
+
+TEST_F(ResultsExporterTest, EmptyTimeSeriesWritesHeaderOnly) {
+  const std::vector<MetricsSnapshot> series;
+
+  ResultsExporter::ExportCsv(series, temp_dir_);
+
+  const std::vector<std::string> lines = ReadTimeseriesLines();
+  ASSERT_EQ(lines.size(), 1U);
+  EXPECT_EQ(lines.front(), std::string(kCsvHeader));
+}
+
+TEST_F(ResultsExporterTest, CsvThrowsWhenOutputDirMissing) {
+  std::vector<MetricsSnapshot> series;
+  series.push_back(MakeSnapshot({MakePerJobMetrics("job", 1, 1, 0, 0)}));
+
+  const std::filesystem::path missing = temp_dir_ / "does" / "not" / "exist";
+  EXPECT_THROW(ResultsExporter::ExportCsv(series, missing), std::runtime_error);
 }
 
 }  // namespace

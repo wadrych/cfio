@@ -3,6 +3,7 @@
 
 #include "reporting/results_exporter.h"
 
+#include <cstddef>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -102,10 +103,28 @@ void ResultsExporter::ExportJson(const BenchmarkResults& results,
 
 void ResultsExporter::ExportCsv(const std::vector<MetricsSnapshot>& time_series,
                                 const std::filesystem::path& output_dir) {
+  const std::filesystem::path out_path = output_dir / "timeseries.csv";
+  std::ofstream out(out_path);
+  if (!out.is_open()) {
+    throw std::runtime_error("cannot open output file: '" + out_path.string() + "'");
+  }
 
-  (void)time_series;
-  (void)output_dir;
-  throw std::logic_error("ResultsExporter::ExportCsv is not implemented yet");
+  out << "timestamp_s,job_name,iops,bw_bytes,lat_p50_ns,lat_p95_ns,lat_p99_ns,errors\n";
+  for (std::size_t i = 0; i < time_series.size(); ++i) {
+    const std::size_t second = i + 1;
+    for (const PerJobMetrics& job : time_series[i].jobs) {
+      out << second << ',' << job.job_name << ',' << job.iops_instant << ',' << job.bw_instant
+          << ',' << job.lat_p50_ns << ',' << job.lat_p95_ns << ',' << job.lat_p99_ns << ','
+          << (job.read_errors + job.write_errors) << '\n';
+    }
+  }
+
+  out.flush();
+  if (!out.good()) {
+    throw std::runtime_error("failed writing output file: '" + out_path.string() + "'");
+  }
+
+  Logger::get()->info("wrote timeseries to '{}'", out_path.string());
 }
 
 }  // namespace cfio

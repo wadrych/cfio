@@ -1,27 +1,30 @@
 #include <cstdlib>
 #include <iostream>
+#include <vector>
 
 #include <CLI/CLI.hpp>
 
 #include "common/cli_options.h"
 #include "common/types.h"
 #include "config/config_validator.h"
+#include "config/job_config.h"
 #include "config/parser_factory.h"
 #include "config/size_parser.h"
 #include "engine/engine_factory.h"
 #include "logging/logger.h"
+#include "orchestrator/benchmark_orchestrator.h"
 
 int main(int argc, char* argv[]) {
   cfio::CliOptions opts;
 
   CLI::App app{"C-FIO: Custom Flexible IO Tester"};
-  
+
   app.add_option("--config", opts.config_path, "Path to job config file")
       ->required()
       ->check(CLI::ExistingFile);
 
   app.add_option("--runtime", opts.runtime_seconds, "Benchmark duration (seconds)")
-      ->default_val(60)
+      ->default_val(10)
       ->check(CLI::PositiveNumber);
 
   app.add_option("--output-dir", opts.output_dir, "Results output directory");
@@ -85,9 +88,10 @@ int main(int argc, char* argv[]) {
     log->info("output-dir: auto");
   }
 
+  std::vector<cfio::JobConfig> jobs;
   try {
     auto parser = cfio::ParserFactory::Create(opts.config_path);
-    auto jobs = parser->Parse(opts.config_path);
+    jobs = parser->Parse(opts.config_path);
 
     for (auto& job : jobs) {
       if (opts.direct_override.has_value()) {
@@ -106,9 +110,6 @@ int main(int argc, char* argv[]) {
                 cfio::JobConfig::ToString(job.rw_mode), cfio::SizeParser::Format(job.block_size),
                 cfio::SizeParser::Format(job.file_size));
     }
-
-    std::cout << "C-FIO: " << jobs.size() << " job(s) validated\n";
-
   } catch (const std::exception& e) {
     log->critical("fatal: {}", e.what());
     std::cerr << "C-FIO: error: " << e.what() << "\n";
@@ -116,6 +117,8 @@ int main(int argc, char* argv[]) {
     return EXIT_FAILURE;
   }
 
+  cfio::BenchmarkOrchestrator orchestrator(std::move(opts), std::move(jobs));
+  const int rc = orchestrator.Run();
   cfio::Logger::shutdown();
-  return EXIT_SUCCESS;
+  return rc;
 }
