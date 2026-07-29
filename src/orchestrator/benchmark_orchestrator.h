@@ -21,7 +21,6 @@
 namespace cfio {
 
 /// @brief Orchestrates workloads execution.
-///
 class BenchmarkOrchestrator {
  public:
   /// @brief Build an orchestrator.

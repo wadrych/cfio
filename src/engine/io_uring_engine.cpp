@@ -37,7 +37,7 @@ void IoUringEngine::Open(const JobConfig& config) {
   const int ret = io_uring_queue_init(static_cast<unsigned>(config.iodepth), &ring_, 0);
   if (ret < 0) {
     if (::close(fd_) != 0) {
-      Logger::get()->warn("IoUringEngine::Open -- cleanup close failed: {}", std::strerror(errno));
+      Logger::Get()->warn("IoUringEngine::Open -- cleanup close failed: {}", ErrnoToString(errno));
     }
     fd_ = -1;
     direct_effective_ = false;
@@ -49,7 +49,7 @@ void IoUringEngine::Open(const JobConfig& config) {
   in_flight_.reserve(static_cast<size_t>(iodepth_));
   cqe_batch_.resize(static_cast<size_t>(iodepth_));
 
-  Logger::get()->debug("io_uring ring initialized: requested={}, sq_entries={}, cq_entries={}",
+  Logger::Get()->debug("io_uring ring initialized: requested={}, sq_entries={}, cq_entries={}",
                        config.iodepth, ring_.sq.ring_entries, ring_.cq.ring_entries);
 }
 
@@ -92,7 +92,7 @@ void IoUringEngine::SubmitIO(const IORequest& request) {
       in_flight_.erase(request.id);
       throw std::system_error(-ret, std::system_category(), "io_uring_submit failed");
     }
-    Logger::get()->warn("io_uring_submit returned 0 -- SQE buffered");
+    Logger::Get()->warn("io_uring_submit returned 0 -- SQE buffered");
   }
 }
 
@@ -111,6 +111,7 @@ void IoUringEngine::PollCompletions(int min_events, int max_events,
   if (min_events > 0) {
     struct io_uring_cqe* cqe = nullptr;
     int ret = 0;
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-do-while)
     do {
       ret = io_uring_wait_cqe_nr(&ring_, &cqe, static_cast<unsigned>(min_events));
     } while (ret == -EINTR || ret == -EAGAIN);
@@ -132,7 +133,7 @@ void IoUringEngine::PollCompletions(int min_events, int max_events,
 
     auto it = in_flight_.find(req_id);
     if (it == in_flight_.end()) {
-      Logger::get()->error("IoUringEngine::PollCompletions -- unexpected CQE for id {}", req_id);
+      Logger::Get()->error("IoUringEngine::PollCompletions -- unexpected CQE for id {}", req_id);
       continue;
     }
 
@@ -162,18 +163,19 @@ void IoUringEngine::PollCompletions(int min_events, int max_events,
 void IoUringEngine::Close() {
   if (ring_initialized_) {
     if (!in_flight_.empty()) {
-      Logger::get()->warn("IoUringEngine::Close -- draining {} pending in-flight IOs",
+      Logger::Get()->warn("IoUringEngine::Close -- draining {} pending in-flight IOs",
                           in_flight_.size());
 
       struct io_uring_cqe* cqe = nullptr;
       while (!in_flight_.empty()) {
         int ret = 0;
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-do-while)
         do {
           ret = io_uring_wait_cqe(&ring_, &cqe);
         } while (ret == -EINTR);
 
         if (ret < 0) {
-          Logger::get()->error("IoUringEngine::Close -- drain wait failed with {}", -ret);
+          Logger::Get()->error("IoUringEngine::Close -- drain wait failed with {}", -ret);
           break;
         }
 
@@ -191,7 +193,7 @@ void IoUringEngine::Close() {
     const int result = ::close(fd_);
     fd_ = -1;
     if (result == -1) {
-      Logger::get()->warn("IoUringEngine::Close -- close failed with errno {}", errno);
+      Logger::Get()->warn("IoUringEngine::Close -- close failed with errno {}", errno);
     }
   }
 

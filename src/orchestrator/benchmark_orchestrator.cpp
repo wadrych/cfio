@@ -140,7 +140,7 @@ int BenchmarkOrchestrator::Run() {
     SetupOutputDirectory();
     InitLogging();
 
-    auto log = Logger::get();
+    auto log = Logger::Get();
     log->info("starting benchmark: {} job(s), runtime {}s", jobs_.size(), options_.runtime_seconds);
 
     PrecreateFiles();
@@ -156,7 +156,7 @@ int BenchmarkOrchestrator::Run() {
   } catch (const std::exception& e) {
     std::cerr << "C-FIO: error: " << e.what() << "\n";
     if (logging_ready_) {
-      Logger::get()->critical("fatal: {}", e.what());
+      Logger::Get()->critical("fatal: {}", e.what());
     }
     return EXIT_FAILURE;
   }
@@ -173,13 +173,13 @@ void BenchmarkOrchestrator::SetupOutputDirectory() {
 }
 
 void BenchmarkOrchestrator::InitLogging() {
-  Logger::shutdown();
-  Logger::init(output_dir_ / "cfio.log", options_.verbose);
+  Logger::Shutdown();
+  Logger::Init(output_dir_ / "cfio.log", options_.verbose);
   logging_ready_ = true;
 }
 
 void BenchmarkOrchestrator::PrecreateFiles() {
-  auto log = Logger::get();
+  auto log = Logger::Get();
   for (const JobConfig& job : jobs_) {
     log->info("preparing '{}' for job '{}' ({} bytes)", job.filename.string(), job.name,
               job.file_size);
@@ -188,7 +188,7 @@ void BenchmarkOrchestrator::PrecreateFiles() {
 }
 
 void BenchmarkOrchestrator::CreateWorkers() {
-  auto log = Logger::get();
+  auto log = Logger::Get();
   workers_.reserve(jobs_.size());
   for (const JobConfig& job : jobs_) {
     std::unique_ptr<IEngineIO> engine = EngineFactory::Create(job.engine);
@@ -198,7 +198,7 @@ void BenchmarkOrchestrator::CreateWorkers() {
 }
 
 void BenchmarkOrchestrator::RunBenchmark(BenchmarkResults& results) {
-  auto log = Logger::get();
+  auto log = Logger::Get();
 
   display_ = DisplayFactory::Create(options_.ui_backend, BuildDisplayContext());
   const DisplayScope display_scope(display_.get());
@@ -233,8 +233,9 @@ void BenchmarkOrchestrator::RunBenchmark(BenchmarkResults& results) {
     display_->Update(aggregator_->LatestSnapshot());
     next_tick += std::chrono::seconds(1);
   }
+  const bool interrupted = !g_running_.load(std::memory_order_relaxed);
   g_running_.store(false, std::memory_order_relaxed);
-  log->info("run finished, stopping workers");
+  log->info("run {}, stopping workers", interrupted ? "interrupted" : "finished");
 
   for (const std::unique_ptr<WorkerThread>& worker : workers_) {
     worker->Join();
@@ -244,6 +245,7 @@ void BenchmarkOrchestrator::RunBenchmark(BenchmarkResults& results) {
   aggregator_->Stop();
 
   results = aggregator_->BuildResults(options_);
+  results.interrupted = interrupted;
   display_->ShowSummary(results);
 }
 

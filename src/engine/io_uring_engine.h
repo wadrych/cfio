@@ -16,7 +16,7 @@
 namespace cfio {
 
 /// @brief Asynchronous IO engine using io_uring SQE/CQE ring buffers.
-class IoUringEngine : public IEngineIO {
+class IoUringEngine final : public IEngineIO {
  public:
   IoUringEngine() = default;
   ~IoUringEngine() override;

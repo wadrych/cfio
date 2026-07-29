@@ -7,7 +7,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <array>
 #include <cerrno>
+#include <cstring>
 #include <filesystem>
 #include <string>
 #include <system_error>
@@ -16,10 +18,21 @@
 
 namespace cfio {
 
+/// @brief Convert an errno value to a message in a thread safe way.
+///
+/// @param error_number  The errno value to describe.
+/// @return The error message.
+inline std::string ErrnoToString(int error_number) {
+  std::array<char, 256> buffer{};
+  // strerror_r may return a pointer to its own static string
+  const char* message = ::strerror_r(error_number, buffer.data(), buffer.size());
+  return {message};
+}
+
 /// @brief Result of opening a file with optional O_DIRECT.
 struct OpenResult {
-  int fd = -1;
-  bool direct_effective = false;
+  int fd = -1;                    ///< Open file descriptor
+  bool direct_effective = false;  ///< True if O_DIRECT was granted
 };
 
 /// @brief Open a file for IO with optional O_DIRECT and automatic fallback.
@@ -41,7 +54,7 @@ inline OpenResult OpenFileWithDirectFallback(const std::filesystem::path& file_p
     if (fd < 0) {
       const int saved_errno = errno;
       if (saved_errno == EINVAL || saved_errno == EOPNOTSUPP) {
-        Logger::get()->warn("O_DIRECT not supported for '{}', falling back to buffered IO",
+        Logger::Get()->warn("O_DIRECT not supported for '{}', falling back to buffered IO",
                             path_str);
         flags = O_RDWR | O_CREAT | O_CLOEXEC;
         fd = ::open(path, flags, kFileMode);
@@ -74,6 +87,7 @@ inline OpenResult OpenFileWithDirectFallback(const std::filesystem::path& file_p
 template<typename Fn>
 ssize_t RetryOnEintr(Fn fn) {
   ssize_t r = 0;
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-do-while)
   do {
     r = fn();
   } while (r == -1 && errno == EINTR);

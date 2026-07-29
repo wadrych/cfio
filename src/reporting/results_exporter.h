@@ -12,15 +12,14 @@
 
 namespace cfio {
 
-/// Writes post run benchmark output files
+/// @brief Writes post run benchmark output files
 class ResultsExporter {
  public:
   /// @brief Write summary
   /// @param results Final results
   /// @param output_dir Existing directory
   /// @throws std::runtime_error if the output file cannot be opened.
-  static void ExportJson(const BenchmarkResults& results,
-                         const std::filesystem::path& output_dir);
+  static void ExportJson(const BenchmarkResults& results, const std::filesystem::path& output_dir);
 
   /// @brief Write timeseries
   /// @param time_series Per-sample metrics history.

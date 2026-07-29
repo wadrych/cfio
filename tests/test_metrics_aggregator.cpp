@@ -43,6 +43,8 @@ class MetricsAggregatorTestPeer {
     agg_->prev_sample_time_ = prev;
   }
 
+  void SetEndTime(std::chrono::steady_clock::time_point end) { agg_->end_time_ = end; }
+
   MetricsSnapshot TakeSnapshot(bool record_ts) { return agg_->TakeSnapshot(record_ts); }
 
   void RecordTimeSeries(const MetricsSnapshot& snapshot) { agg_->RecordTimeSeries(snapshot); }
@@ -175,7 +177,7 @@ TEST(MetricsAggregatorTest, SnapshotMergeAggregatesJobs) {
 
   const MetricsSnapshot snapshot = peer.TakeSnapshot(true);
 
-  ASSERT_EQ(snapshot.jobs.size(), 2u);
+  ASSERT_EQ(snapshot.jobs.size(), 2U);
   EXPECT_EQ(snapshot.jobs[0].job_name, "reader");
   EXPECT_EQ(snapshot.jobs[1].job_name, "writer");
 
@@ -187,7 +189,7 @@ TEST(MetricsAggregatorTest, SnapshotMergeAggregatesJobs) {
   EXPECT_EQ(agg.bw_cumulative, snapshot.jobs[0].bw_cumulative + snapshot.jobs[1].bw_cumulative);
   EXPECT_EQ(agg.read_errors, snapshot.jobs[0].read_errors + snapshot.jobs[1].read_errors);
   EXPECT_EQ(agg.write_errors, snapshot.jobs[0].write_errors + snapshot.jobs[1].write_errors);
-  EXPECT_GT(agg.iops_cumulative, 0u);
+  EXPECT_GT(agg.iops_cumulative, 0U);
 }
 
 TEST(MetricsAggregatorTest, InstantVsCumulativeMath) {
@@ -198,8 +200,7 @@ TEST(MetricsAggregatorTest, InstantVsCumulativeMath) {
   MetricsAggregator aggregator({worker.get()}, 10);
   MetricsAggregatorTestPeer peer(aggregator);
   const auto now = std::chrono::steady_clock::now();
-  peer.SetClocks(now - std::chrono::seconds(2),
-                 now - std::chrono::seconds(1));
+  peer.SetClocks(now - std::chrono::seconds(2), now - std::chrono::seconds(1));
   peer.SetPrev({kPrevIos}, {kPrevIos * kBlockSize});
 
   const MetricsSnapshot first = peer.TakeSnapshot(true);
@@ -207,12 +208,12 @@ TEST(MetricsAggregatorTest, InstantVsCumulativeMath) {
   EXPECT_EQ(first.aggregate.iops_cumulative, kIos / 2);            // 50
   EXPECT_EQ(first.aggregate.bw_instant, (kIos - kPrevIos) * kBlockSize);
   EXPECT_EQ(first.aggregate.bw_cumulative, (kIos / 2) * kBlockSize);
-  ASSERT_EQ(peer.PrevIops().size(), 1u);
+  ASSERT_EQ(peer.PrevIops().size(), 1U);
   EXPECT_EQ(peer.PrevIops()[0], kIos);
 
   const MetricsSnapshot second = peer.TakeSnapshot(false);
-  EXPECT_EQ(second.aggregate.iops_instant, 0u);
-  EXPECT_GT(second.aggregate.iops_cumulative, 0u);
+  EXPECT_EQ(second.aggregate.iops_instant, 0U);
+  EXPECT_GT(second.aggregate.iops_cumulative, 0U);
 }
 
 TEST(MetricsAggregatorTest, CircularBufferWraps) {
@@ -224,10 +225,10 @@ TEST(MetricsAggregatorTest, CircularBufferWraps) {
   }
 
   const std::vector<MetricsSnapshot> series = aggregator.TimeSeries();
-  ASSERT_EQ(series.size(), 3u);
-  EXPECT_EQ(series[0].aggregate.iops_cumulative, 3u);
-  EXPECT_EQ(series[1].aggregate.iops_cumulative, 4u);
-  EXPECT_EQ(series[2].aggregate.iops_cumulative, 5u);
+  ASSERT_EQ(series.size(), 3U);
+  EXPECT_EQ(series[0].aggregate.iops_cumulative, 3U);
+  EXPECT_EQ(series[1].aggregate.iops_cumulative, 4U);
+  EXPECT_EQ(series[2].aggregate.iops_cumulative, 5U);
 }
 
 TEST(MetricsAggregatorTest, TimeSeriesBeforeWrap) {
@@ -238,9 +239,9 @@ TEST(MetricsAggregatorTest, TimeSeriesBeforeWrap) {
   peer.RecordTimeSeries(TaggedSnapshot(2));
 
   const std::vector<MetricsSnapshot> series = aggregator.TimeSeries();
-  ASSERT_EQ(series.size(), 2u);
-  EXPECT_EQ(series[0].aggregate.iops_cumulative, 1u);
-  EXPECT_EQ(series[1].aggregate.iops_cumulative, 2u);
+  ASSERT_EQ(series.size(), 2U);
+  EXPECT_EQ(series[0].aggregate.iops_cumulative, 1U);
+  EXPECT_EQ(series[1].aggregate.iops_cumulative, 2U);
 }
 
 TEST(MetricsAggregatorTest, BuildResultsCarriesWorkerTotals) {
@@ -252,8 +253,7 @@ TEST(MetricsAggregatorTest, BuildResultsCarriesWorkerTotals) {
   MetricsAggregator aggregator({reader.get(), writer.get()}, 7);
   MetricsAggregatorTestPeer peer(aggregator);
   const auto now = std::chrono::steady_clock::now();
-  peer.SetClocks(now - std::chrono::seconds(1),
-                 now - std::chrono::seconds(1));
+  peer.SetClocks(now - std::chrono::seconds(1), now - std::chrono::seconds(1));
 
   CliOptions opts;
   opts.ui_backend = "terminal";
@@ -262,19 +262,20 @@ TEST(MetricsAggregatorTest, BuildResultsCarriesWorkerTotals) {
 
   EXPECT_EQ(results.cfio_version, "0.1.0");
   EXPECT_EQ(results.runtime_seconds, 7);
+  EXPECT_FALSE(results.interrupted);
   EXPECT_EQ(results.global_config.ui_backend, "terminal");
   EXPECT_TRUE(results.time_series.empty());
-  ASSERT_EQ(results.jobs.size(), 2u);
+  ASSERT_EQ(results.jobs.size(), 2U);
 
   const JobResults& read_job = results.jobs[0];
   EXPECT_EQ(read_job.name, "reader");
   EXPECT_EQ(read_job.total_ios, kReadIos);
   EXPECT_EQ(read_job.total_bytes, kReadIos * kBlockSize);
-  EXPECT_EQ(read_job.read_errors, 0u);
-  EXPECT_EQ(read_job.write_errors, 0u);
+  EXPECT_EQ(read_job.read_errors, 0U);
+  EXPECT_EQ(read_job.write_errors, 0U);
   EXPECT_TRUE(read_job.direct_effective);
-  EXPECT_GT(read_job.iops_avg, 0u);
-  EXPECT_GT(read_job.bw_avg_bytes, 0u);
+  EXPECT_GT(read_job.iops_avg, 0U);
+  EXPECT_GT(read_job.bw_avg_bytes, 0U);
   EXPECT_LE(read_job.lat_min_ns, read_job.lat_p50_ns);
   EXPECT_LE(read_job.lat_p50_ns, read_job.lat_p95_ns);
   EXPECT_LE(read_job.lat_p95_ns, read_job.lat_p99_ns);
@@ -285,6 +286,24 @@ TEST(MetricsAggregatorTest, BuildResultsCarriesWorkerTotals) {
   EXPECT_EQ(write_job.total_ios, kWriteIos);
   EXPECT_EQ(write_job.total_bytes, kWriteIos * kBlockSize);
   EXPECT_FALSE(write_job.direct_effective);
+}
+
+TEST(MetricsAggregatorTest, ElapsedSecondsMeasuredIndependentOfConfiguredRuntime) {
+  constexpr std::uint64_t kIos = 500;
+  auto reader = MakeFrozenWorker("reader", RWMode::kRead, kIos, false, true);
+
+  MetricsAggregator aggregator({reader.get()}, 30);
+  MetricsAggregatorTestPeer peer(aggregator);
+  const auto now = std::chrono::steady_clock::now();
+  peer.SetClocks(now - std::chrono::seconds(4), now - std::chrono::seconds(4));
+  peer.SetEndTime(now);
+
+  CliOptions opts;
+  opts.runtime_seconds = 30;
+  const BenchmarkResults results = aggregator.BuildResults(opts);
+
+  EXPECT_EQ(results.runtime_seconds, 30);
+  EXPECT_NEAR(results.elapsed_seconds, 4.0, 0.05);
 }
 
 TEST(MetricsAggregatorTest, ReadWriteErrorsSplitInResults) {
@@ -299,17 +318,17 @@ TEST(MetricsAggregatorTest, ReadWriteErrorsSplitInResults) {
 
   const MetricsSnapshot snapshot = peer.TakeSnapshot(false);
   EXPECT_EQ(snapshot.jobs[0].read_errors, kErrors);
-  EXPECT_EQ(snapshot.jobs[0].write_errors, 0u);
+  EXPECT_EQ(snapshot.jobs[0].write_errors, 0U);
   EXPECT_EQ(snapshot.jobs[1].write_errors, kErrors);
-  EXPECT_EQ(snapshot.jobs[1].read_errors, 0u);
+  EXPECT_EQ(snapshot.jobs[1].read_errors, 0U);
   EXPECT_EQ(snapshot.aggregate.read_errors, kErrors);
   EXPECT_EQ(snapshot.aggregate.write_errors, kErrors);
 
   const BenchmarkResults results = aggregator.BuildResults(CliOptions{});
   EXPECT_EQ(results.jobs[0].read_errors, kErrors);
-  EXPECT_EQ(results.jobs[0].write_errors, 0u);
+  EXPECT_EQ(results.jobs[0].write_errors, 0U);
   EXPECT_EQ(results.jobs[1].write_errors, kErrors);
-  EXPECT_EQ(results.jobs[1].read_errors, 0u);
+  EXPECT_EQ(results.jobs[1].read_errors, 0U);
 }
 
 TEST(MetricsAggregatorTest, StartStopLifecycleRecordsSeries) {
@@ -322,8 +341,8 @@ TEST(MetricsAggregatorTest, StartStopLifecycleRecordsSeries) {
   aggregator.Stop();
   aggregator.TakeFinalSnapshot();
 
-  EXPECT_EQ(aggregator.LatestSnapshot().jobs.size(), 1u);
-  EXPECT_GE(aggregator.TimeSeries().size(), 1u);
+  EXPECT_EQ(aggregator.LatestSnapshot().jobs.size(), 1U);
+  EXPECT_GE(aggregator.TimeSeries().size(), 1U);
 }
 
 }  // namespace

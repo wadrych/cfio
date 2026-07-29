@@ -2,6 +2,7 @@
 /// @brief Unit tests for AlignedBuffer RAII wrapper.
 ///
 
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <stdexcept>
@@ -16,59 +17,61 @@ namespace {
 
 TEST(AlignedBufferTest, BasicAllocation) {
   AlignedBuffer buf(4096, 4096);
-  EXPECT_NE(buf.data(), nullptr);
-  EXPECT_EQ(buf.size(), 4096u);
-  EXPECT_EQ(buf.alignment(), 4096u);
-  EXPECT_FALSE(buf.empty());
+  EXPECT_NE(buf.Data(), nullptr);
+  EXPECT_EQ(buf.Size(), 4096U);
+  EXPECT_EQ(buf.Alignment(), 4096U);
+  EXPECT_FALSE(buf.Empty());
 }
 
 TEST(AlignedBufferTest, DataIsAligned) {
   constexpr size_t kAlignment = 4096;
   AlignedBuffer buf(kAlignment, kAlignment);
-  auto addr = reinterpret_cast<uintptr_t>(buf.data());
-  EXPECT_EQ(addr % kAlignment, 0u);
+  auto addr = reinterpret_cast<uintptr_t>(buf.Data());
+  EXPECT_EQ(addr % kAlignment, 0U);
 }
 
 TEST(AlignedBufferTest, ConstDataAccessor) {
   const AlignedBuffer buf(4096, 4096);
-  const void* ptr = buf.data();
+  const void* ptr = buf.Data();
   EXPECT_NE(ptr, nullptr);
-  EXPECT_EQ(buf.size(), 4096u);
-  EXPECT_EQ(buf.alignment(), 4096u);
-  EXPECT_FALSE(buf.empty());
+  EXPECT_EQ(buf.Size(), 4096U);
+  EXPECT_EQ(buf.Alignment(), 4096U);
+  EXPECT_FALSE(buf.Empty());
 }
 
 TEST(AlignedBufferTest, BufferIsWritable) {
   AlignedBuffer buf(4096, 4096);
-  std::memset(buf.data(), 0xAB, buf.size());
-  EXPECT_EQ(static_cast<uint8_t*>(buf.data())[0], 0xABu);
-  EXPECT_EQ(static_cast<uint8_t*>(buf.data())[4095], 0xABu);
+  std::memset(buf.Data(), 0xAB, buf.Size());
+  EXPECT_EQ(static_cast<uint8_t*>(buf.Data())[0], 0xABU);
+  EXPECT_EQ(static_cast<uint8_t*>(buf.Data())[4095], 0xABU);
 }
 
 TEST(AlignedBufferTest, MoveConstructor) {
   AlignedBuffer a(4096, 4096);
-  void* original_data = a.data();
-  size_t original_size = a.size();
+  void* original_data = a.Data();
+  size_t const original_size = a.Size();
 
   AlignedBuffer b(std::move(a));
 
-  EXPECT_EQ(b.data(), original_data);
-  EXPECT_EQ(b.size(), original_size);
-  EXPECT_EQ(a.data(), nullptr);
-  EXPECT_EQ(a.size(), 0u);
-  EXPECT_TRUE(a.empty());
+  EXPECT_EQ(b.Data(), original_data);
+  EXPECT_EQ(b.Size(), original_size);
+  // NOLINTBEGIN(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
+  EXPECT_EQ(a.Data(), nullptr);
+  EXPECT_EQ(a.Size(), 0U);
+  EXPECT_TRUE(a.Empty());
+  // NOLINTEND(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
 }
 
 TEST(AlignedBufferTest, MoveAssignment) {
   AlignedBuffer a(4096, 4096);
   AlignedBuffer b(4096, 8192);
-  void* b_data = b.data();
-  size_t b_size = b.size();
+  void* b_data = b.Data();
+  size_t const b_size = b.Size();
 
   a = std::move(b);
 
-  EXPECT_EQ(a.data(), b_data);
-  EXPECT_EQ(a.size(), b_size);
+  EXPECT_EQ(a.Data(), b_data);
+  EXPECT_EQ(a.Size(), b_size);
 }
 
 TEST(AlignedBufferTest, SelfMoveAssignment) {
@@ -84,9 +87,9 @@ TEST(AlignedBufferTest, SelfMoveAssignment) {
 
   // Swap-based implementation preserves state, but we only assert
   // the object is valid and non-empty, not an implementation detail.
-  EXPECT_FALSE(a.empty());
-  EXPECT_NE(a.data(), nullptr);
-  EXPECT_GT(a.size(), 0u);
+  EXPECT_FALSE(a.Empty());
+  EXPECT_NE(a.Data(), nullptr);
+  EXPECT_GT(a.Size(), 0U);
 }
 
 TEST(AlignedBufferTest, ZeroSizeThrows) {
@@ -112,22 +115,22 @@ TEST(AlignedBufferTest, LargeBuffer) {
   constexpr size_t kAlignment = 4096;
   constexpr size_t kSize = 1048576;
   AlignedBuffer buf(kAlignment, kSize);
-  EXPECT_NE(buf.data(), nullptr);
-  EXPECT_EQ(buf.size(), kSize);
-  auto addr = reinterpret_cast<uintptr_t>(buf.data());
-  EXPECT_EQ(addr % kAlignment, 0u);
+  EXPECT_NE(buf.Data(), nullptr);
+  EXPECT_EQ(buf.Size(), kSize);
+  auto addr = reinterpret_cast<uintptr_t>(buf.Data());
+  EXPECT_EQ(addr % kAlignment, 0U);
 }
 
 TEST(AlignedBufferTest, MultipleAlignments) {
   // Each size must be a multiple of its alignment.
-  constexpr size_t kAlignments[] = {512, 4096, 65536};
-  for (size_t alignment : kAlignments) {
+  constexpr std::array<size_t, 3> kAlignments = {512, 4096, 65536};
+  for (size_t const alignment : kAlignments) {
     AlignedBuffer buf(alignment, alignment);
-    EXPECT_NE(buf.data(), nullptr) << "alignment: " << alignment;
-    EXPECT_EQ(buf.size(), alignment) << "alignment: " << alignment;
-    EXPECT_EQ(buf.alignment(), alignment) << "alignment: " << alignment;
-    auto addr = reinterpret_cast<uintptr_t>(buf.data());
-    EXPECT_EQ(addr % alignment, 0u) << "alignment: " << alignment;
+    EXPECT_NE(buf.Data(), nullptr) << "alignment: " << alignment;
+    EXPECT_EQ(buf.Size(), alignment) << "alignment: " << alignment;
+    EXPECT_EQ(buf.Alignment(), alignment) << "alignment: " << alignment;
+    auto addr = reinterpret_cast<uintptr_t>(buf.Data());
+    EXPECT_EQ(addr % alignment, 0U) << "alignment: " << alignment;
   }
 }
 
@@ -135,18 +138,21 @@ TEST(AlignedBufferTest, MovedFromObjectDestructs) {
   // After move, the source holds nullptr. Its destructor must not crash.
   // Under ASan, a double-free would be caught here.
   AlignedBuffer a(4096, 4096);
-  AlignedBuffer b(std::move(a));
-  EXPECT_TRUE(a.empty());
+  AlignedBuffer const b(std::move(a));
+  // NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
+  EXPECT_TRUE(a.Empty());
   // a goes out of scope here — calling free on nullptr must be a no-op.
 }
 
 TEST(AlignedBufferTest, EmptyAfterMoveConstruct) {
   AlignedBuffer a(4096, 4096);
-  AlignedBuffer b(std::move(a));
-  EXPECT_TRUE(a.empty());
-  EXPECT_EQ(a.data(), nullptr);
-  EXPECT_EQ(a.size(), 0u);
-  EXPECT_EQ(a.alignment(), 0u);
+  AlignedBuffer const b(std::move(a));
+  // NOLINTBEGIN(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
+  EXPECT_TRUE(a.Empty());
+  EXPECT_EQ(a.Data(), nullptr);
+  EXPECT_EQ(a.Size(), 0U);
+  EXPECT_EQ(a.Alignment(), 0U);
+  // NOLINTEND(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
 }
 
 }  // namespace

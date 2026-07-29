@@ -3,6 +3,8 @@
 
 #include "display/terminal_display.h"
 
+#include <unistd.h>
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -32,6 +34,8 @@ constexpr std::string_view kHideCursor = "\033[?25l";
 constexpr std::string_view kShowCursor = "\033[?25h";
 constexpr std::string_view kClearLine = "\033[K";
 constexpr std::string_view kClearBelow = "\033[0J";
+constexpr std::string_view kEnterAlt = "\033[?1049h";
+constexpr std::string_view kLeaveAlt = "\033[?1049l";
 
 // Box drawing and bar glyphs, pinned by code point
 constexpr std::string_view kVert = "│";      // vertical rule
@@ -148,48 +152,65 @@ std::string FormatJobConfig(const JobConfig& config) {
 }  // namespace
 
 TerminalDisplay::TerminalDisplay(DisplayContext context)
-    : TerminalDisplay(std::move(context), std::cout) {
+    : TerminalDisplay(std::move(context), std::cout, ::isatty(STDOUT_FILENO) != 0) {
 }
 
-TerminalDisplay::TerminalDisplay(DisplayContext context, std::ostream& out)
-    : context_(std::move(context)), out_(&out) {
+TerminalDisplay::TerminalDisplay(DisplayContext context, std::ostream& out, bool ansi)
+    : context_(std::move(context)), out_(&out), ansi_(ansi) {
 }
 
 void TerminalDisplay::Init(int runtime_seconds) {
   runtime_seconds_ = runtime_seconds;
   start_ = std::chrono::steady_clock::now();
-  *out_ << kClearScreen << kCursorHome << kHideCursor << RenderLiveView(MetricsSnapshot{}, 0);
+  if (!ansi_) {
+    return;
+  }
+  *out_ << kEnterAlt << kClearScreen << kCursorHome << kHideCursor
+        << RenderLiveView(MetricsSnapshot{}, 0);
+  alt_active_ = true;
   out_->flush();
 }
 
 void TerminalDisplay::Update(const MetricsSnapshot& snapshot) {
-  int elapsed = 0;
-  if (start_ != std::chrono::steady_clock::time_point{}) {
-    const auto delta =
-        std::chrono::duration_cast<std::chrono::seconds>(snapshot.timestamp - start_).count();
-    elapsed = static_cast<int>(std::clamp<std::int64_t>(delta, 0, runtime_seconds_));
+  if (!ansi_) {
+    return;
   }
+  const auto delta =
+      std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_)
+          .count();
+  const auto elapsed = static_cast<int>(std::clamp<std::int64_t>(delta, 0, runtime_seconds_));
   *out_ << kCursorHome << RenderLiveView(snapshot, elapsed);
   out_->flush();
 }
 
 void TerminalDisplay::ShowSummary(const BenchmarkResults& results) {
-  *out_ << kClearScreen << kCursorHome << RenderSummary(results);
+  LeaveAltScreen();
+  *out_ << RenderSummary(results);
   out_->flush();
 }
 
 void TerminalDisplay::Shutdown() {
-  *out_ << kShowCursor << '\n';
+  LeaveAltScreen();
   out_->flush();
+}
+
+void TerminalDisplay::LeaveAltScreen() {
+  if (!alt_active_) {
+    return;
+  }
+  *out_ << kShowCursor << kLeaveAlt;
+  alt_active_ = false;
 }
 
 std::string TerminalDisplay::RenderLiveView(const MetricsSnapshot& snapshot,
                                             int elapsed_seconds) const {
   std::string frame;
   const auto add_line = [&frame](const std::string& content) {
+    if (!frame.empty()) {
+      frame += '\n';
+    }
     frame += content;
     frame += kClearLine;
-    frame += '\n';
   };
 
   add_line(fmt::format("C-FIO Benchmark {} Running [{} / {}]    Engine: {}    Direct: {}", kDash,
@@ -225,8 +246,15 @@ std::string TerminalDisplay::RenderSummary(const BenchmarkResults& results) cons
     frame += '\n';
   };
 
-  add_line(fmt::format("C-FIO Benchmark {} Complete   Runtime {}   Engine {}   Direct {}", kDash,
-                       FormatDuration(results.runtime_seconds), context_.engine_label,
+  const int elapsed = static_cast<int>(results.elapsed_seconds);
+  const std::string runtime = results.interrupted
+                                  ? fmt::format("{} of {}", FormatDuration(elapsed),
+                                                FormatDuration(results.runtime_seconds))
+                                  : FormatDuration(elapsed);
+
+  add_line(fmt::format("C-FIO Benchmark {} Complete{}", kDash,
+                       results.interrupted ? " (interrupted)" : ""));
+  add_line(fmt::format(" Runtime {}   Engine {}   Direct {}", runtime, context_.engine_label,
                        context_.direct_label));
   add_line(RepeatGlyph(kDouble, kRowWidth));
 

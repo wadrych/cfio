@@ -38,7 +38,7 @@ TEST(IODirectionDeciderTest, MixedRatioApproximate) {
   constexpr int kSamples = 10000;
   constexpr int kReadPercent = 70;
 
-  for (RWMode mode : {RWMode::kReadWrite, RWMode::kRandRW}) {
+  for (RWMode const mode : {RWMode::kReadWrite, RWMode::kRandRW}) {
     IODirectionDecider decider(mode, kReadPercent, kSeed);
     int reads = 0;
     for (int i = 0; i < kSamples; ++i) {

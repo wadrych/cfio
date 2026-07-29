@@ -63,6 +63,7 @@ MetricsSnapshot SampleSnapshot() {
 BenchmarkResults SampleResults() {
   BenchmarkResults results;
   results.runtime_seconds = 60;
+  results.elapsed_seconds = 60.4;
 
   JobResults read;
   read.name = "rand-read-4k";
@@ -169,6 +170,43 @@ TEST(TerminalDisplayTest, RenderSummaryShowsCumulativeStats) {
   EXPECT_NE(frame.find("Log: ./cfio-results/run/cfio.log"), std::string::npos);
 }
 
+TEST(TerminalDisplayTest, RenderSummaryShowsElapsedNotConfigured) {
+  std::ostringstream sink;
+  const TerminalDisplay display(SampleContext(), sink);
+
+  BenchmarkResults results = SampleResults();
+  results.elapsed_seconds = 24.8;
+
+  const std::string frame = display.RenderSummary(results);
+
+  EXPECT_NE(frame.find("Runtime 00:24"), std::string::npos);
+  EXPECT_EQ(frame.find("(interrupted)"), std::string::npos);
+  EXPECT_EQ(frame.find(" of "), std::string::npos);
+}
+
+TEST(TerminalDisplayTest, RenderSummaryMarksInterruptedRun) {
+  std::ostringstream sink;
+  const TerminalDisplay display(SampleContext(), sink);
+
+  BenchmarkResults results = SampleResults();
+  results.elapsed_seconds = 4.7;
+  results.interrupted = true;
+
+  const std::string frame = display.RenderSummary(results);
+
+  EXPECT_NE(frame.find("Complete (interrupted)"), std::string::npos);
+  EXPECT_NE(frame.find("Runtime 00:04 of 01:00"), std::string::npos);
+}
+
+TEST(TerminalDisplayTest, RenderSummaryTruncatesElapsedOverrun) {
+  std::ostringstream sink;
+  const TerminalDisplay display(SampleContext(), sink);
+
+  const std::string frame = display.RenderSummary(SampleResults());
+
+  EXPECT_NE(frame.find("Runtime 01:00"), std::string::npos);
+}
+
 TEST(TerminalDisplayTest, RenderSummaryAggregatesTotals) {
   std::ostringstream sink;
   const TerminalDisplay display(SampleContext(), sink);
@@ -178,17 +216,82 @@ TEST(TerminalDisplayTest, RenderSummaryAggregatesTotals) {
   EXPECT_NE(frame.find("TOTAL   IOPS 169,203   BW 681 MB/s   IO 39.0 GiB"), std::string::npos);
 }
 
-TEST(TerminalDisplayTest, ShowSummaryClearsAndWritesFrame) {
+TEST(TerminalDisplayTest, ShowSummaryLeavesAltScreenAndWritesFrame) {
   std::ostringstream sink;
   TerminalDisplay display(SampleContext(), sink);
+  display.Init(30);
+  sink.str("");
 
   display.ShowSummary(SampleResults());
 
   const std::string out = sink.str();
-  EXPECT_NE(out.find("\033[2J"), std::string::npos);
-  EXPECT_NE(out.find("\033[H"), std::string::npos);
+  EXPECT_NE(out.find("\033[?1049l"), std::string::npos);
+  EXPECT_EQ(out.find("\033[2J"), std::string::npos);
   EXPECT_NE(out.find("rand-read-4k"), std::string::npos);
   EXPECT_NE(out.find("Complete"), std::string::npos);
+}
+
+TEST(TerminalDisplayTest, InitEntersAltScreen) {
+  std::ostringstream sink;
+  TerminalDisplay display(SampleContext(), sink);
+
+  display.Init(30);
+
+  const std::string out = sink.str();
+  EXPECT_NE(out.find("\033[?1049h"), std::string::npos);
+  EXPECT_NE(out.find("\033[?25l"), std::string::npos);
+}
+
+TEST(TerminalDisplayTest, ShutdownLeavesAltScreenWithoutSummary) {
+  std::ostringstream sink;
+  TerminalDisplay display(SampleContext(), sink);
+  display.Init(30);
+  sink.str("");
+
+  display.Shutdown();
+
+  const std::string out = sink.str();
+  EXPECT_NE(out.find("\033[?25h"), std::string::npos);
+  EXPECT_NE(out.find("\033[?1049l"), std::string::npos);
+}
+
+TEST(TerminalDisplayTest, ShutdownAfterSummaryIsNoOp) {
+  std::ostringstream sink;
+  TerminalDisplay display(SampleContext(), sink);
+  display.Init(30);
+  display.ShowSummary(SampleResults());
+  sink.str("");
+
+  display.Shutdown();
+
+  EXPECT_TRUE(sink.str().empty());
+}
+
+TEST(TerminalDisplayTest, PlainModeSkipsLiveViewAndEscapes) {
+  std::ostringstream sink;
+  TerminalDisplay display(SampleContext(), sink, false);
+
+  display.Init(30);
+  display.Update(SampleSnapshot());
+  EXPECT_TRUE(sink.str().empty());
+
+  display.ShowSummary(SampleResults());
+  display.Shutdown();
+
+  const std::string out = sink.str();
+  EXPECT_EQ(out.find("\033["), std::string::npos);
+  EXPECT_NE(out.find("Complete"), std::string::npos);
+  EXPECT_NE(out.find("rand-read-4k"), std::string::npos);
+}
+
+TEST(TerminalDisplayTest, LiveViewHasNoTrailingNewline) {
+  std::ostringstream sink;
+  const TerminalDisplay display(SampleContext(), sink);
+
+  const std::string frame = display.RenderLiveView(SampleSnapshot(), 15);
+
+  ASSERT_FALSE(frame.empty());
+  EXPECT_NE(frame.back(), '\n');
 }
 
 TEST(DisplayFactoryTest, TerminalBackendCreatesDisplay) {

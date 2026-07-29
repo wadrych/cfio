@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <streambuf>
 #include <string>
@@ -43,13 +44,16 @@ class BenchmarkOrchestratorTest : public ::testing::Test {
   }
 
   void TearDown() override {
+    Logger::Shutdown();
     std::error_code ec;
     std::filesystem::remove_all(base_dir_, ec);
+    Logger::Init(std::filesystem::path(::testing::TempDir()) / "cfio_test_restore.log",
+                 /*verbose=*/false);
   }
 
-  JobConfig MakeJob() const {
+  [[nodiscard]] JobConfig MakeNamedJob(const std::string& name) const {
     JobConfig job;
-    job.name = "smoke";
+    job.name = name;
     job.engine = "psync";
     job.rw_mode = RWMode::kRead;
     job.access_pattern = AccessPattern::kSequential;
@@ -58,12 +62,14 @@ class BenchmarkOrchestratorTest : public ::testing::Test {
     job.iodepth = 1;
     job.direct = false;
     job.rwmixread = 100;
-    job.filename = data_dir_ / "smoke.dat";
+    job.filename = data_dir_ / (name + ".dat");
     job.alignment = kBlockSize;
     return job;
   }
 
-  CliOptions MakeOptions() const {
+  [[nodiscard]] JobConfig MakeJob() const { return MakeNamedJob("smoke"); }
+
+  [[nodiscard]] CliOptions MakeOptions() const {
     CliOptions opts;
     opts.runtime_seconds = kRuntimeSeconds;
     opts.output_dir = out_dir_;
@@ -83,7 +89,7 @@ TEST_F(BenchmarkOrchestratorTest, RunsFullLifecycleAndWritesOutputs) {
 
   int exit_code = EXIT_FAILURE;
   {
-    std::ostringstream sink;
+    std::ostringstream const sink;
     std::streambuf* saved = std::cout.rdbuf(sink.rdbuf());
     BenchmarkOrchestrator orchestrator(opts, {job});
     exit_code = orchestrator.Run();
@@ -91,7 +97,7 @@ TEST_F(BenchmarkOrchestratorTest, RunsFullLifecycleAndWritesOutputs) {
   }
   EXPECT_EQ(exit_code, EXIT_SUCCESS);
 
-  Logger::get()->flush();
+  Logger::Get()->flush();
 
   const std::filesystem::path summary = out_dir_ / "summary.json";
   const std::filesystem::path timeseries = out_dir_ / "timeseries.csv";
@@ -111,6 +117,8 @@ TEST_F(BenchmarkOrchestratorTest, RunsFullLifecycleAndWritesOutputs) {
   ASSERT_EQ(root["jobs"].size(), 1U);
   EXPECT_EQ(root["jobs"][0]["name"], "smoke");
   EXPECT_GT(root["jobs"][0]["results"]["total_ios"].get<std::uint64_t>(), 0U);
+  EXPECT_FALSE(root["interrupted"].get<bool>());
+  EXPECT_GE(root["elapsed_seconds"].get<double>(), kRuntimeSeconds);
 }
 
 TEST_F(BenchmarkOrchestratorTest, SignalStopsRunEarly) {
@@ -120,13 +128,13 @@ TEST_F(BenchmarkOrchestratorTest, SignalStopsRunEarly) {
 
   std::thread raiser([]() {
     std::this_thread::sleep_for(std::chrono::milliseconds(700));
-    std::raise(SIGINT);
+    EXPECT_EQ(std::raise(SIGINT), 0);
   });
 
   int exit_code = EXIT_FAILURE;
   const auto begin = std::chrono::steady_clock::now();
   {
-    std::ostringstream sink;
+    std::ostringstream const sink;
     std::streambuf* saved = std::cout.rdbuf(sink.rdbuf());
     BenchmarkOrchestrator orchestrator(opts, {job});
     exit_code = orchestrator.Run();
@@ -138,8 +146,84 @@ TEST_F(BenchmarkOrchestratorTest, SignalStopsRunEarly) {
   EXPECT_EQ(exit_code, EXIT_SUCCESS);
   EXPECT_LT(std::chrono::duration_cast<std::chrono::seconds>(elapsed).count(), 10);
 
-  Logger::get()->flush();
-  EXPECT_TRUE(std::filesystem::exists(out_dir_ / "summary.json"));
+  Logger::Get()->flush();
+  ASSERT_TRUE(std::filesystem::exists(out_dir_ / "summary.json"));
+
+  std::ifstream summary_in(out_dir_ / "summary.json");
+  const nlohmann::json root = nlohmann::json::parse(summary_in);
+  EXPECT_EQ(root["runtime_seconds"].get<int>(), 30);
+  EXPECT_TRUE(root["interrupted"].get<bool>());
+  EXPECT_LT(root["elapsed_seconds"].get<double>(), 10.0);
+}
+
+TEST_F(BenchmarkOrchestratorTest, RunsMultipleJobsAndReportsEach) {
+  const JobConfig first = MakeNamedJob("job-one");
+  JobConfig second = MakeNamedJob("job-two");
+  second.engine = "sync";
+  second.direct = true;
+
+  const CliOptions opts = MakeOptions();
+
+  int exit_code = EXIT_FAILURE;
+  {
+    std::ostringstream const sink;
+    std::streambuf* saved = std::cout.rdbuf(sink.rdbuf());
+    BenchmarkOrchestrator orchestrator(opts, {first, second});
+    exit_code = orchestrator.Run();
+    std::cout.rdbuf(saved);
+  }
+  ASSERT_EQ(exit_code, EXIT_SUCCESS);
+
+  std::ifstream summary_in(out_dir_ / "summary.json");
+  const nlohmann::json root = nlohmann::json::parse(summary_in);
+  ASSERT_EQ(root["jobs"].size(), 2U);
+  EXPECT_EQ(root["jobs"][0]["name"], "job-one");
+  EXPECT_EQ(root["jobs"][1]["name"], "job-two");
+
+  std::ifstream csv_in(out_dir_ / "timeseries.csv");
+  const std::string csv{std::istreambuf_iterator<char>(csv_in), std::istreambuf_iterator<char>()};
+  EXPECT_NE(csv.find("job-one"), std::string::npos);
+  EXPECT_NE(csv.find("job-two"), std::string::npos);
+}
+
+TEST_F(BenchmarkOrchestratorTest, KeepFilesPreservesDataFile) {
+  const JobConfig job = MakeJob();
+  CliOptions opts = MakeOptions();
+  opts.keep_files = true;
+
+  int exit_code = EXIT_FAILURE;
+  {
+    std::ostringstream const sink;
+    std::streambuf* saved = std::cout.rdbuf(sink.rdbuf());
+    BenchmarkOrchestrator orchestrator(opts, {job});
+    exit_code = orchestrator.Run();
+    std::cout.rdbuf(saved);
+  }
+
+  EXPECT_EQ(exit_code, EXIT_SUCCESS);
+  EXPECT_TRUE(std::filesystem::exists(job.filename));
+}
+
+TEST_F(BenchmarkOrchestratorTest, UnknownEngineFailsRun) {
+  JobConfig job = MakeJob();
+  job.engine = "bogus";
+
+  const CliOptions opts = MakeOptions();
+
+  int exit_code = EXIT_SUCCESS;
+  {
+    std::ostringstream const out_sink;
+    std::ostringstream const err_sink;
+    std::streambuf* saved_out = std::cout.rdbuf(out_sink.rdbuf());
+    std::streambuf* saved_err = std::cerr.rdbuf(err_sink.rdbuf());
+    BenchmarkOrchestrator orchestrator(opts, {job});
+    exit_code = orchestrator.Run();
+    std::cout.rdbuf(saved_out);
+    std::cerr.rdbuf(saved_err);
+  }
+
+  EXPECT_EQ(exit_code, EXIT_FAILURE);
+  EXPECT_FALSE(std::filesystem::exists(out_dir_ / "summary.json"));
 }
 
 }  // namespace

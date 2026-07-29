@@ -10,7 +10,7 @@
 namespace cfio {
 
 /// @brief Synchronous IO engine that uses lseek followed by read or write.
-class SyncEngine : public IEngineIO {
+class SyncEngine final : public IEngineIO {
  public:
   SyncEngine() = default;
   ~SyncEngine() override;

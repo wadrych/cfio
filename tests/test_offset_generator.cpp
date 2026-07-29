@@ -44,6 +44,56 @@ TEST(OffsetGeneratorTest, RandomOffsetsAlignedAndInRange) {
   }
 }
 
+TEST(OffsetGeneratorTest, RandomRoundsDownToAlignmentSmallerThanBlock) {
+  constexpr size_t kAlignment = 4096;
+  constexpr size_t kBigBlock = 8192;
+  const size_t file_size = 512 * kAlignment;
+  OffsetGenerator gen(AccessPattern::kRandom, file_size, kBigBlock, kAlignment, kSeed);
+
+  for (int i = 0; i < 10000; ++i) {
+    const off_t offset = gen.Next();
+    EXPECT_GE(offset, 0);
+    EXPECT_EQ(offset % static_cast<off_t>(kAlignment), 0) << "offset not aligned: " << offset;
+    EXPECT_LE(static_cast<size_t>(offset) + kBigBlock, file_size)
+        << "block would run past EOF at offset " << offset;
+  }
+}
+
+TEST(OffsetGeneratorTest, SameSeedProducesSameSequence) {
+  const size_t file_size = 1024 * kBlockSize;
+  OffsetGenerator first(AccessPattern::kRandom, file_size, kBlockSize, kBlockSize, kSeed);
+  OffsetGenerator second(AccessPattern::kRandom, file_size, kBlockSize, kBlockSize, kSeed);
+
+  for (int i = 0; i < 1000; ++i) {
+    EXPECT_EQ(first.Next(), second.Next());
+  }
+}
+
+TEST(OffsetGeneratorTest, DifferentSeedsDiverge) {
+  const size_t file_size = 1024 * kBlockSize;
+  OffsetGenerator first(AccessPattern::kRandom, file_size, kBlockSize, kBlockSize, kSeed);
+  OffsetGenerator second(AccessPattern::kRandom, file_size, kBlockSize, kBlockSize, kSeed + 1);
+
+  bool any_difference = false;
+  for (int i = 0; i < 100 && !any_difference; ++i) {
+    any_difference = first.Next() != second.Next();
+  }
+  EXPECT_TRUE(any_difference);
+}
+
+TEST(OffsetGeneratorTest, DefaultSeedStaysInRange) {
+  const size_t file_size = 64 * kBlockSize;
+  const auto max_offset = static_cast<off_t>(file_size - kBlockSize);
+  OffsetGenerator gen(AccessPattern::kRandom, file_size, kBlockSize, kBlockSize);
+
+  for (int i = 0; i < 1000; ++i) {
+    const off_t offset = gen.Next();
+    EXPECT_GE(offset, 0);
+    EXPECT_LE(offset, max_offset);
+    EXPECT_EQ(offset % static_cast<off_t>(kBlockSize), 0);
+  }
+}
+
 TEST(OffsetGeneratorTest, SingleBlockFileAlwaysZero) {
   OffsetGenerator seq(AccessPattern::kSequential, kBlockSize, kBlockSize, kBlockSize, kSeed);
   OffsetGenerator rnd(AccessPattern::kRandom, kBlockSize, kBlockSize, kBlockSize, kSeed);

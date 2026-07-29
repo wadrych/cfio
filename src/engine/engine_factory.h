@@ -13,7 +13,6 @@
 namespace cfio {
 
 /// @brief Creates the appropriate IEngineIO implementation based on engine name.
-///
 class EngineFactory {
  public:
   EngineFactory() = delete;

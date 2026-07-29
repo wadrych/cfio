@@ -1,8 +1,8 @@
-/// @file io_direction_decider.h
-/// @brief Decides read or write for each IO based on the workload mode
-
 #ifndef CFIO_TELEMETRY_IO_DIRECTION_DECIDER_H_
 #define CFIO_TELEMETRY_IO_DIRECTION_DECIDER_H_
+
+/// @file io_direction_decider.h
+/// @brief Decides read or write for each IO based on the workload mode
 
 #include <cstdint>
 #include <random>
@@ -12,7 +12,6 @@
 namespace cfio {
 
 /// @brief Picks the direction of each IO
-///
 class IODirectionDecider {
  public:
   /// @brief Builds a decider for one worker

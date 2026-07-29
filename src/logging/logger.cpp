@@ -1,3 +1,6 @@
+/// @file logger.cpp
+/// @brief Implementation of the spdlog logger wrapper.
+
 #include "logging/logger.h"
 
 #include <stdexcept>
@@ -9,9 +12,9 @@ namespace cfio {
 
 std::shared_ptr<spdlog::logger> Logger::logger_;
 
-void Logger::init(const std::filesystem::path& log_path, bool verbose) {
+void Logger::Init(const std::filesystem::path& log_path, bool verbose) {
   if (logger_) {
-    throw std::runtime_error("Logger::init() multiple calls not allowed");
+    throw std::runtime_error("Logger::Init() multiple calls not allowed");
   }
 
   // 8192-slot queue, 1 background thread.
@@ -28,14 +31,14 @@ void Logger::init(const std::filesystem::path& log_path, bool verbose) {
   spdlog::register_logger(logger_);
 }
 
-std::shared_ptr<spdlog::logger> Logger::get() {
+std::shared_ptr<spdlog::logger> Logger::Get() {
   if (!logger_) {
-    throw std::runtime_error("Logger::get() not allowed before init");
+    throw std::runtime_error("Logger::Get() not allowed before init");
   }
   return logger_;
 }
 
-void Logger::shutdown() {
+void Logger::Shutdown() {
   if (logger_) {
     logger_->flush();
     spdlog::drop("cfio");

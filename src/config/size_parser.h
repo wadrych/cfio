@@ -2,7 +2,7 @@
 #define CFIO_CONFIG_SIZE_PARSER_H_
 
 /// @file size_parser.h
-/// @brief Converts human-readable size strings (e.g. "4k", "1G") to bytes
+/// @brief Converts human-readable size strings such as "4k" or "1G" to bytes
 ///        and back.
 
 #include <cstddef>
@@ -10,18 +10,26 @@
 
 namespace cfio {
 
-/// Converts between human-readable size strings and byte counts.
+/// @brief Converts between human-readable size strings and byte counts.
 class SizeParser {
  public:
-  /// Allowed suffixes for parsing size strings.
-  enum class AllowedSuffixes { kKM, kKMG };
+  /// @brief Suffix sets accepted when parsing a size string.
+  enum class AllowedSuffixes {
+    kKM,  ///< Accept k and m only, used for block sizes
+    kKMG  ///< Accept k, m and g, used for file sizes
+  };
 
-  /// Parse a size string like "4k" or "1G" into a byte count.
-  /// Supported suffixes: k (1024), m (1024^2), g (1024^3).
+  /// @brief Parse a size string such as "4k" or "1G" into a byte count.
+  /// @param size_str  Size string starting with a digit.
+  /// @param allowed   Suffix set accepted for this field.
+  /// @return The size in bytes.
+  /// @throws std::invalid_argument if the string is empty, malformed, uses a
+  ///         suffix outside @p allowed, or overflows size_t.
   static size_t Parse(const std::string& size_str, AllowedSuffixes allowed = AllowedSuffixes::kKMG);
 
-  /// Format a byte count back to a human-readable string.
-  /// Uses the largest clean unit (M > K > raw bytes).
+  /// @brief Format a byte count back to a human-readable string.
+  /// @param bytes  Byte count to format.
+  /// @return The formatted size string.
   static std::string Format(size_t bytes);
 };
 

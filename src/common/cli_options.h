@@ -10,16 +10,16 @@
 
 namespace cfio {
 
-/// Parsed command-line arguments controlling runtime behavior.
+/// @brief Parsed command-line arguments controlling runtime behavior.
 struct CliOptions {
-  /// Path to job definition file (.json or .csv).
+  /// Path to the job definition file in json or csv format.
   std::filesystem::path config_path;
 
   /// Global benchmark duration in seconds.
   int runtime_seconds = 60;
 
-  /// Results output dir. Empty will auto-generate as
-  /// ./cfio-results/<first-job-name>-<YYYYMMDDTHHmmss>/
+  /// Results output directory. Empty auto-generates a timestamped path under
+  /// ./cfio-results named after the first job.
   std::filesystem::path output_dir;
 
   /// UI backend selection: "terminal", "tui", or "qt".
@@ -34,7 +34,7 @@ struct CliOptions {
   /// Enable Debug level logging.
   bool verbose = false;
 
-  /// Keep test files after benchmark completes instead of deleting them.
+  /// Keep test files after the benchmark completes instead of deleting them.
   bool keep_files = false;
 };
 

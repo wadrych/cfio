@@ -222,6 +222,7 @@ BenchmarkResults MetricsAggregator::BuildResults(const CliOptions& opts) const {
 
   const auto end = end_time_ > start_time_ ? end_time_ : std::chrono::steady_clock::now();
   const double elapsed = ElapsedSeconds(start_time_, end);
+  results.elapsed_seconds = elapsed;
 
   results.jobs.reserve(workers_.size());
   for (const WorkerThread* worker : workers_) {

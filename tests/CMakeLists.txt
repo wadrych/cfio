@@ -5,7 +5,10 @@ include(GoogleTest)
 enable_testing()
 
 add_executable(cfio-tests
+  test_main.cpp
   test_smoke.cpp
+  test_logger.cpp
+  test_engine_utils.cpp
   test_size_parser.cpp
   test_job_config.cpp
   test_config_validator.cpp
@@ -29,5 +32,9 @@ target_link_libraries(cfio-tests
   PRIVATE cfio-core
   PRIVATE nlohmann_json::nlohmann_json
 )
+
+if(CFIO_ENABLE_COVERAGE)
+  target_compile_options(cfio-tests PRIVATE ${CFIO_COVERAGE_COMPILE_OPTIONS})
+endif()
 
 gtest_discover_tests(cfio-tests)

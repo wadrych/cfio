@@ -12,17 +12,18 @@
 
 namespace cfio {
 
-/// Parses a CSV configuration file into a list of job configurations.
+/// @brief Parses a CSV configuration file into a list of job configurations.
+///
 /// Expects a header row with field names matching the JSON schema, followed
 /// by one data row per job. Empty fields use defaults.
 class CsvParser : public IConfigParser {
  public:
-  /// Parse a CSV configuration file.
+  /// @brief Parse a CSV configuration file.
   /// @param path Path to the CSV file.
   /// @return A vector of parsed job configurations.
   /// @throws std::runtime_error on I/O errors or malformed CSV.
   /// @throws std::invalid_argument on invalid field values.
-  std::vector<JobConfig> Parse(const std::filesystem::path& path) const override;
+  [[nodiscard]] std::vector<JobConfig> Parse(const std::filesystem::path& path) const override;
 };
 
 }  // namespace cfio

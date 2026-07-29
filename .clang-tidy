@@ -11,8 +11,7 @@ ExtraArgsBefore:
   - -Wno-unknown-warning-option
   - -Wno-unknown-attributes
 
-# Empty during initial setup — enable gradually in Phase 1E.
-WarningsAsErrors: ''
+WarningsAsErrors: '*'
 
 Checks: >
   -*,
@@ -29,15 +28,19 @@ Checks: >
   -cppcoreguidelines-owning-memory,
   -cppcoreguidelines-avoid-non-const-global-variables,
   -cppcoreguidelines-pro-type-union-access,
+  -cppcoreguidelines-pro-type-vararg,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
   google-*,
   -google-runtime-references,
   misc-*,
   -misc-non-private-member-variables-in-classes,
   -misc-no-recursion,
+  -misc-include-cleaner,
   modernize-*,
   -modernize-use-trailing-return-type,
   -modernize-avoid-c-arrays,
   performance-*,
+  -performance-enum-size,
   readability-*,
   -readability-magic-numbers,
   -readability-identifier-length,
@@ -60,9 +63,39 @@ CheckOptions:
     value: lower_case
   - key: readability-identifier-naming.PrivateMemberSuffix
     value: '_'
+  - key: readability-identifier-naming.ProtectedMemberSuffix
+    value: '_'
+  - key: readability-identifier-naming.ClassMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.ClassMemberSuffix
+    value: '_'
+  # Fallback for constants that do not match a more specific key below.
   - key: readability-identifier-naming.ConstantCase
     value: CamelCase
   - key: readability-identifier-naming.ConstantPrefix
+    value: 'k'
+  # The k prefix is only for constants with static storage duration.
+  # Local const variables stay lower_case.
+  - key: readability-identifier-naming.LocalConstantCase
+    value: lower_case
+  - key: readability-identifier-naming.LocalConstantPointerCase
+    value: lower_case
+  # Local constexpr keeps the k prefix, it is a compile time constant.
+  - key: readability-identifier-naming.ConstexprVariableCase
+    value: CamelCase
+  - key: readability-identifier-naming.ConstexprVariablePrefix
+    value: 'k'
+  - key: readability-identifier-naming.ConstantParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.ConstantMemberCase
+    value: lower_case
+  - key: readability-identifier-naming.StaticConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.StaticConstantPrefix
+    value: 'k'
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.GlobalConstantPrefix
     value: 'k'
   - key: readability-identifier-naming.EnumConstantCase
     value: CamelCase
@@ -74,6 +107,9 @@ CheckOptions:
     value: CamelCase
   - key: readability-identifier-naming.MacroDefinitionCase
     value: UPPER_CASE
+  # Include guards end with a trailing underscore per Google style.
+  - key: readability-identifier-naming.MacroDefinitionIgnoredRegexp
+    value: '^CFIO_[A-Z0-9_]+_H_$'
   # Complexity threshold
   - key: readability-function-cognitive-complexity.Threshold
     value: '25'

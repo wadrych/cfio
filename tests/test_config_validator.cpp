@@ -61,7 +61,7 @@ TEST(ConfigValidatorTest, ValidBoundaryIODepth1) {
 }
 
 TEST(ConfigValidatorTest, ValidMultipleJobs) {
-  std::vector<JobConfig> configs = {MakeValidConfig("job-a"), MakeValidConfig("job-b")};
+  std::vector<JobConfig> const configs = {MakeValidConfig("job-a"), MakeValidConfig("job-b")};
   EXPECT_NO_THROW(ConfigValidator::ValidateAll(configs));
 }
 
@@ -153,12 +153,12 @@ TEST(ConfigValidatorTest, EmptyName) {
 // --- Multi-job validation (ValidateAll) ---
 
 TEST(ConfigValidatorTest, DuplicateNames) {
-  std::vector<JobConfig> configs = {MakeValidConfig("same"), MakeValidConfig("same")};
+  std::vector<JobConfig> const configs = {MakeValidConfig("same"), MakeValidConfig("same")};
   EXPECT_THROW(ConfigValidator::ValidateAll(configs), std::runtime_error);
 }
 
 TEST(ConfigValidatorTest, EmptyJobsVector) {
-  std::vector<JobConfig> configs;
+  std::vector<JobConfig> const configs;
   EXPECT_THROW(ConfigValidator::ValidateAll(configs), std::runtime_error);
 }
 

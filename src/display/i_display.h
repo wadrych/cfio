@@ -10,7 +10,6 @@
 namespace cfio {
 
 /// @brief Abstract interface for rendering benchmark progress and results
-///
 class IDisplay {
  public:
   IDisplay() = default;

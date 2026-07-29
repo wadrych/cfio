@@ -19,7 +19,7 @@ namespace cfio {
 class ConfigParserTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
+    const auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
     temp_dir_ = std::filesystem::path(::testing::TempDir()) / ("cfio_" + std::string(info->name()));
     std::filesystem::create_directories(temp_dir_);
   }
@@ -52,33 +52,33 @@ TEST_F(ConfigParserTest, JsonValidMultiJob) {
     ]
   })");
 
-  JsonParser parser;
+  JsonParser const parser;
   auto configs = parser.Parse(path);
-  ASSERT_EQ(configs.size(), 2u);
+  ASSERT_EQ(configs.size(), 2U);
 
   EXPECT_EQ(configs[0].name, "j1");
   EXPECT_EQ(configs[0].engine, "io_uring");
   EXPECT_EQ(configs[0].rw_mode, RWMode::kRandRead);
   EXPECT_EQ(configs[0].access_pattern, AccessPattern::kRandom);
-  EXPECT_EQ(configs[0].block_size, 4096u);
-  EXPECT_EQ(configs[0].file_size, 1073741824u);
+  EXPECT_EQ(configs[0].block_size, 4096U);
+  EXPECT_EQ(configs[0].file_size, 1073741824U);
   EXPECT_EQ(configs[0].iodepth, 32);
   EXPECT_TRUE(configs[0].direct);
   EXPECT_EQ(configs[0].rwmixread, 100);
   EXPECT_EQ(configs[0].filename.string(), "/tmp/f1.dat");
-  EXPECT_EQ(configs[0].alignment, 4096u);
+  EXPECT_EQ(configs[0].alignment, 4096U);
 
   EXPECT_EQ(configs[1].name, "j2");
   EXPECT_EQ(configs[1].engine, "psync");
   EXPECT_EQ(configs[1].rw_mode, RWMode::kWrite);
   EXPECT_EQ(configs[1].access_pattern, AccessPattern::kSequential);
-  EXPECT_EQ(configs[1].block_size, 131072u);
-  EXPECT_EQ(configs[1].file_size, 2147483648u);
+  EXPECT_EQ(configs[1].block_size, 131072U);
+  EXPECT_EQ(configs[1].file_size, 2147483648U);
   EXPECT_EQ(configs[1].iodepth, 1);
   EXPECT_FALSE(configs[1].direct);
   EXPECT_EQ(configs[1].rwmixread, 50);
   EXPECT_EQ(configs[1].filename.string(), "/tmp/f2.dat");
-  EXPECT_EQ(configs[1].alignment, 4096u);
+  EXPECT_EQ(configs[1].alignment, 4096U);
 }
 
 TEST_F(ConfigParserTest, JsonDefaultsApplied) {
@@ -86,9 +86,9 @@ TEST_F(ConfigParserTest, JsonDefaultsApplied) {
     "jobs":[{"name":"def","engine":"psync","rw":"read","bs":"4k","size":"1g"}]
   })");
 
-  JsonParser parser;
+  JsonParser const parser;
   auto configs = parser.Parse(path);
-  ASSERT_EQ(configs.size(), 1u);
+  ASSERT_EQ(configs.size(), 1U);
 
   EXPECT_EQ(configs[0].rw_mode, RWMode::kRead);
   EXPECT_EQ(configs[0].access_pattern, AccessPattern::kSequential);
@@ -96,13 +96,13 @@ TEST_F(ConfigParserTest, JsonDefaultsApplied) {
   EXPECT_TRUE(configs[0].direct);
   EXPECT_EQ(configs[0].rwmixread, 50);
   EXPECT_EQ(configs[0].filename.string(), "./cfio-def.dat");
-  EXPECT_EQ(configs[0].alignment, 4096u);
+  EXPECT_EQ(configs[0].alignment, 4096U);
 }
 
 TEST_F(ConfigParserTest, JsonEmptyJobsArray) {
   auto path = WriteFile("empty.json", R"({"jobs":[]})");
 
-  JsonParser parser;
+  JsonParser const parser;
   std::vector<JobConfig> result;
   EXPECT_NO_THROW(result = parser.Parse(path));
   EXPECT_TRUE(result.empty());
@@ -112,48 +112,48 @@ TEST_F(ConfigParserTest, JsonMissingRequiredName) {
   auto path = WriteFile("t.json", R"({
     "jobs":[{"engine":"psync","rw":"read","bs":"4k","size":"1g"}]
   })");
-  JsonParser parser;
-  EXPECT_THROW(parser.Parse(path), std::runtime_error);
+  JsonParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, JsonMissingRequiredEngine) {
   auto path = WriteFile("t.json", R"({
     "jobs":[{"name":"x","rw":"read","bs":"4k","size":"1g"}]
   })");
-  JsonParser parser;
-  EXPECT_THROW(parser.Parse(path), std::runtime_error);
+  JsonParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, JsonMissingRequiredRw) {
   auto path = WriteFile("t.json", R"({
     "jobs":[{"name":"x","engine":"psync","bs":"4k","size":"1g"}]
   })");
-  JsonParser parser;
-  EXPECT_THROW(parser.Parse(path), std::runtime_error);
+  JsonParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, JsonMissingRequiredBs) {
   auto path = WriteFile("t.json", R"({
     "jobs":[{"name":"x","engine":"psync","rw":"read","size":"1g"}]
   })");
-  JsonParser parser;
-  EXPECT_THROW(parser.Parse(path), std::runtime_error);
+  JsonParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, JsonMissingRequiredSize) {
   auto path = WriteFile("t.json", R"({
     "jobs":[{"name":"x","engine":"psync","rw":"read","bs":"4k"}]
   })");
-  JsonParser parser;
-  EXPECT_THROW(parser.Parse(path), std::runtime_error);
+  JsonParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, JsonBadRwValue) {
   auto path = WriteFile("t.json", R"({
     "jobs":[{"name":"x","engine":"psync","rw":"invalid","bs":"4k","size":"1g"}]
   })");
-  JsonParser parser;
-  EXPECT_THROW(parser.Parse(path), std::invalid_argument);
+  JsonParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::invalid_argument);
 }
 
 TEST_F(ConfigParserTest, JsonBadBsSuffix) {
@@ -161,8 +161,8 @@ TEST_F(ConfigParserTest, JsonBadBsSuffix) {
   auto path = WriteFile("t.json", R"({
     "jobs":[{"name":"x","engine":"psync","rw":"read","bs":"4g","size":"1g"}]
   })");
-  JsonParser parser;
-  EXPECT_THROW(parser.Parse(path), std::invalid_argument);
+  JsonParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::invalid_argument);
 }
 
 TEST_F(ConfigParserTest, JsonWrongFieldType) {
@@ -170,43 +170,43 @@ TEST_F(ConfigParserTest, JsonWrongFieldType) {
   auto path = WriteFile("t.json", R"({
     "jobs":[{"name":"x","engine":"psync","rw":42,"bs":"4k","size":"1g"}]
   })");
-  JsonParser parser;
-  EXPECT_THROW(parser.Parse(path), std::runtime_error);
+  JsonParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, JsonMalformedJson) {
   auto path = WriteFile("t.json", "not { valid json");
-  JsonParser parser;
-  EXPECT_THROW(parser.Parse(path), std::runtime_error);
+  JsonParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, JsonRootNotObject) {
   auto path = WriteFile("t.json", "[1,2,3]");
-  JsonParser parser;
-  EXPECT_THROW(parser.Parse(path), std::runtime_error);
+  JsonParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, JsonMissingJobsKey) {
   auto path = WriteFile("t.json", "{}");
-  JsonParser parser;
-  EXPECT_THROW(parser.Parse(path), std::runtime_error);
+  JsonParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, JsonJobsNotArray) {
   auto path = WriteFile("t.json", R"({"jobs":"hello"})");
-  JsonParser parser;
-  EXPECT_THROW(parser.Parse(path), std::runtime_error);
+  JsonParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, JsonNonexistentFile) {
-  JsonParser parser;
-  EXPECT_THROW(parser.Parse("/nonexistent/path.json"), std::runtime_error);
+  JsonParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse("/nonexistent/path.json")), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, JsonEmptyFile) {
   auto path = WriteFile("t.json", "");
-  JsonParser parser;
-  EXPECT_THROW(parser.Parse(path), std::runtime_error);
+  JsonParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::runtime_error);
 }
 
 // CsvParser tests
@@ -217,33 +217,33 @@ TEST_F(ConfigParserTest, CsvValidMultiJob) {
                         "j1,io_uring,randread,4k,1g,32,true,100,/tmp/f1.dat,4k\n"
                         "j2,psync,write,128k,2g,1,false,50,/tmp/f2.dat,4k\n");
 
-  CsvParser parser;
+  CsvParser const parser;
   auto configs = parser.Parse(path);
-  ASSERT_EQ(configs.size(), 2u);
+  ASSERT_EQ(configs.size(), 2U);
 
   EXPECT_EQ(configs[0].name, "j1");
   EXPECT_EQ(configs[0].engine, "io_uring");
   EXPECT_EQ(configs[0].rw_mode, RWMode::kRandRead);
   EXPECT_EQ(configs[0].access_pattern, AccessPattern::kRandom);
-  EXPECT_EQ(configs[0].block_size, 4096u);
-  EXPECT_EQ(configs[0].file_size, 1073741824u);
+  EXPECT_EQ(configs[0].block_size, 4096U);
+  EXPECT_EQ(configs[0].file_size, 1073741824U);
   EXPECT_EQ(configs[0].iodepth, 32);
   EXPECT_TRUE(configs[0].direct);
   EXPECT_EQ(configs[0].rwmixread, 100);
   EXPECT_EQ(configs[0].filename.string(), "/tmp/f1.dat");
-  EXPECT_EQ(configs[0].alignment, 4096u);
+  EXPECT_EQ(configs[0].alignment, 4096U);
 
   EXPECT_EQ(configs[1].name, "j2");
   EXPECT_EQ(configs[1].engine, "psync");
   EXPECT_EQ(configs[1].rw_mode, RWMode::kWrite);
   EXPECT_EQ(configs[1].access_pattern, AccessPattern::kSequential);
-  EXPECT_EQ(configs[1].block_size, 131072u);
-  EXPECT_EQ(configs[1].file_size, 2147483648u);
+  EXPECT_EQ(configs[1].block_size, 131072U);
+  EXPECT_EQ(configs[1].file_size, 2147483648U);
   EXPECT_EQ(configs[1].iodepth, 1);
   EXPECT_FALSE(configs[1].direct);
   EXPECT_EQ(configs[1].rwmixread, 50);
   EXPECT_EQ(configs[1].filename.string(), "/tmp/f2.dat");
-  EXPECT_EQ(configs[1].alignment, 4096u);
+  EXPECT_EQ(configs[1].alignment, 4096U);
 }
 
 TEST_F(ConfigParserTest, CsvDefaultsApplied) {
@@ -251,9 +251,9 @@ TEST_F(ConfigParserTest, CsvDefaultsApplied) {
                         "name,engine,rw,bs,size\n"
                         "def,psync,read,4k,1g\n");
 
-  CsvParser parser;
+  CsvParser const parser;
   auto configs = parser.Parse(path);
-  ASSERT_EQ(configs.size(), 1u);
+  ASSERT_EQ(configs.size(), 1U);
 
   EXPECT_EQ(configs[0].rw_mode, RWMode::kRead);
   EXPECT_EQ(configs[0].access_pattern, AccessPattern::kSequential);
@@ -261,7 +261,7 @@ TEST_F(ConfigParserTest, CsvDefaultsApplied) {
   EXPECT_TRUE(configs[0].direct);
   EXPECT_EQ(configs[0].rwmixread, 50);
   EXPECT_EQ(configs[0].filename.string(), "./cfio-def.dat");
-  EXPECT_EQ(configs[0].alignment, 4096u);
+  EXPECT_EQ(configs[0].alignment, 4096U);
 }
 
 TEST_F(ConfigParserTest, CsvEmptyOptionalCells) {
@@ -269,21 +269,21 @@ TEST_F(ConfigParserTest, CsvEmptyOptionalCells) {
                         "name,engine,rw,bs,size,iodepth,direct,rwmixread,filename,align\n"
                         "e,psync,read,4k,1g,,,,,\n");
 
-  CsvParser parser;
+  CsvParser const parser;
   auto configs = parser.Parse(path);
-  ASSERT_EQ(configs.size(), 1u);
+  ASSERT_EQ(configs.size(), 1U);
 
   EXPECT_EQ(configs[0].iodepth, 1);
   EXPECT_TRUE(configs[0].direct);
   EXPECT_EQ(configs[0].rwmixread, 50);
   EXPECT_EQ(configs[0].filename.string(), "./cfio-e.dat");
-  EXPECT_EQ(configs[0].alignment, 4096u);
+  EXPECT_EQ(configs[0].alignment, 4096U);
 }
 
 TEST_F(ConfigParserTest, CsvHeaderOnly) {
   auto path = WriteFile("header.csv", "name,engine,rw,bs,size\n");
 
-  CsvParser parser;
+  CsvParser const parser;
   std::vector<JobConfig> result;
   EXPECT_NO_THROW(result = parser.Parse(path));
   EXPECT_TRUE(result.empty());
@@ -293,77 +293,77 @@ TEST_F(ConfigParserTest, CsvMissingRequiredColumn) {
   auto path = WriteFile("t.csv",
                         "name,rw,bs,size\n"
                         "x,read,4k,1g\n");
-  CsvParser parser;
-  EXPECT_THROW(parser.Parse(path), std::runtime_error);
+  CsvParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, CsvEmptyRequiredName) {
   auto path = WriteFile("t.csv",
                         "name,engine,rw,bs,size\n"
                         ",psync,read,4k,1g\n");
-  CsvParser parser;
-  EXPECT_THROW(parser.Parse(path), std::runtime_error);
+  CsvParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, CsvEmptyRequiredEngine) {
   auto path = WriteFile("t.csv",
                         "name,engine,rw,bs,size\n"
                         "x,,read,4k,1g\n");
-  CsvParser parser;
-  EXPECT_THROW(parser.Parse(path), std::runtime_error);
+  CsvParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, CsvBadRwValue) {
   auto path = WriteFile("t.csv",
                         "name,engine,rw,bs,size\n"
                         "x,psync,invalid,4k,1g\n");
-  CsvParser parser;
-  EXPECT_THROW(parser.Parse(path), std::invalid_argument);
+  CsvParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::invalid_argument);
 }
 
 TEST_F(ConfigParserTest, CsvBadDirectValue) {
   auto path = WriteFile("t.csv",
                         "name,engine,rw,bs,size,direct\n"
                         "x,psync,read,4k,1g,yes\n");
-  CsvParser parser;
-  EXPECT_THROW(parser.Parse(path), std::invalid_argument);
+  CsvParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::invalid_argument);
 }
 
 TEST_F(ConfigParserTest, CsvBadIodepthNotInt) {
   auto path = WriteFile("t.csv",
                         "name,engine,rw,bs,size,iodepth\n"
                         "x,psync,read,4k,1g,abc\n");
-  CsvParser parser;
-  EXPECT_THROW(parser.Parse(path), std::invalid_argument);
+  CsvParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::invalid_argument);
 }
 
 TEST_F(ConfigParserTest, CsvIodepthTrailingJunk) {
   auto path = WriteFile("t.csv",
                         "name,engine,rw,bs,size,iodepth\n"
                         "x,psync,read,4k,1g,32x\n");
-  CsvParser parser;
-  EXPECT_THROW(parser.Parse(path), std::invalid_argument);
+  CsvParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::invalid_argument);
 }
 
 TEST_F(ConfigParserTest, CsvBadRwmixread) {
   auto path = WriteFile("t.csv",
                         "name,engine,rw,bs,size,rwmixread\n"
                         "x,psync,read,4k,1g,abc\n");
-  CsvParser parser;
-  EXPECT_THROW(parser.Parse(path), std::invalid_argument);
+  CsvParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::invalid_argument);
 }
 
 TEST_F(ConfigParserTest, CsvBadBsSuffix) {
   auto path = WriteFile("t.csv",
                         "name,engine,rw,bs,size\n"
                         "x,psync,read,4g,1g\n");
-  CsvParser parser;
-  EXPECT_THROW(parser.Parse(path), std::invalid_argument);
+  CsvParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse(path)), std::invalid_argument);
 }
 
 TEST_F(ConfigParserTest, CsvNonexistentFile) {
-  CsvParser parser;
-  EXPECT_THROW(parser.Parse("/nonexistent/path.csv"), std::runtime_error);
+  CsvParser const parser;
+  EXPECT_THROW(static_cast<void>(parser.Parse("/nonexistent/path.csv")), std::runtime_error);
 }
 
 TEST_F(ConfigParserTest, CsvColumnOrderIndependence) {
@@ -372,15 +372,15 @@ TEST_F(ConfigParserTest, CsvColumnOrderIndependence) {
                         "size,name,bs,engine,rw\n"
                         "1g,x,4k,psync,read\n");
 
-  CsvParser parser;
+  CsvParser const parser;
   auto configs = parser.Parse(path);
-  ASSERT_EQ(configs.size(), 1u);
+  ASSERT_EQ(configs.size(), 1U);
 
   EXPECT_EQ(configs[0].name, "x");
   EXPECT_EQ(configs[0].engine, "psync");
   EXPECT_EQ(configs[0].rw_mode, RWMode::kRead);
-  EXPECT_EQ(configs[0].block_size, 4096u);
-  EXPECT_EQ(configs[0].file_size, 1073741824u);
+  EXPECT_EQ(configs[0].block_size, 4096U);
+  EXPECT_EQ(configs[0].file_size, 1073741824U);
 }
 
 // ParserFactory tests
@@ -427,22 +427,22 @@ TEST_F(ConfigParserTest, JsonParseValidate) {
     ]
   })");
 
-  JsonParser parser;
+  JsonParser const parser;
   auto configs = parser.Parse(path);
   EXPECT_NO_THROW(ConfigValidator::ValidateAll(configs));
-  ASSERT_EQ(configs.size(), 2u);
+  ASSERT_EQ(configs.size(), 2U);
 
   EXPECT_EQ(configs[0].name, "rt1");
   EXPECT_EQ(configs[0].engine, "io_uring");
   EXPECT_EQ(configs[0].rw_mode, RWMode::kRandRead);
-  EXPECT_EQ(configs[0].block_size, 4096u);
-  EXPECT_EQ(configs[0].file_size, 1048576u);
+  EXPECT_EQ(configs[0].block_size, 4096U);
+  EXPECT_EQ(configs[0].file_size, 1048576U);
 
   EXPECT_EQ(configs[1].name, "rt2");
   EXPECT_EQ(configs[1].engine, "psync");
   EXPECT_EQ(configs[1].rw_mode, RWMode::kWrite);
-  EXPECT_EQ(configs[1].block_size, 8192u);
-  EXPECT_EQ(configs[1].file_size, 1048576u);
+  EXPECT_EQ(configs[1].block_size, 8192U);
+  EXPECT_EQ(configs[1].file_size, 1048576U);
 }
 
 TEST_F(ConfigParserTest, CsvParseValidate) {
@@ -451,22 +451,22 @@ TEST_F(ConfigParserTest, CsvParseValidate) {
                         "rt1,io_uring,randread,4k,1m,32,true,70,/tmp/rt1.dat,4k\n"
                         "rt2,psync,write,8k,1m,1,false,50,/tmp/rt2.dat,4k\n");
 
-  CsvParser parser;
+  CsvParser const parser;
   auto configs = parser.Parse(path);
   EXPECT_NO_THROW(ConfigValidator::ValidateAll(configs));
-  ASSERT_EQ(configs.size(), 2u);
+  ASSERT_EQ(configs.size(), 2U);
 
   EXPECT_EQ(configs[0].name, "rt1");
   EXPECT_EQ(configs[0].engine, "io_uring");
   EXPECT_EQ(configs[0].rw_mode, RWMode::kRandRead);
-  EXPECT_EQ(configs[0].block_size, 4096u);
-  EXPECT_EQ(configs[0].file_size, 1048576u);
+  EXPECT_EQ(configs[0].block_size, 4096U);
+  EXPECT_EQ(configs[0].file_size, 1048576U);
 
   EXPECT_EQ(configs[1].name, "rt2");
   EXPECT_EQ(configs[1].engine, "psync");
   EXPECT_EQ(configs[1].rw_mode, RWMode::kWrite);
-  EXPECT_EQ(configs[1].block_size, 8192u);
-  EXPECT_EQ(configs[1].file_size, 1048576u);
+  EXPECT_EQ(configs[1].block_size, 8192U);
+  EXPECT_EQ(configs[1].file_size, 1048576U);
 }
 
 }  // namespace

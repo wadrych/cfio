@@ -6,6 +6,7 @@
 #include <csv.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <stdexcept>
 #include <string>
@@ -17,7 +18,7 @@ namespace cfio {
 
 namespace {
 
-constexpr const char* kRequiredColumns[] = {"name", "engine", "rw", "bs", "size"};
+constexpr std::array<const char*, 5> kRequiredColumns = {"name", "engine", "rw", "bs", "size"};
 
 /// Parse an integer from a CSV string.
 int ParseInt(const std::string& str, const std::string& field_name) {
@@ -57,7 +58,7 @@ JobConfig ParseJob(const csv::CSVRow& row, size_t index,
 
   // Get optional field value.
   auto get_opt = [&](const std::string& field) -> std::string {
-    if (columns.count(field) == 0) {
+    if (!columns.contains(field)) {
       return "";
     }
     return row[field].get<std::string>();
@@ -154,7 +155,7 @@ std::vector<JobConfig> CsvParser::Parse(const std::filesystem::path& path) const
 
   // Verify all required columns exist in header.
   for (const auto* required : kRequiredColumns) {
-    if (columns.count(required) == 0) {
+    if (!columns.contains(required)) {
       throw std::runtime_error("missing required column '" + std::string(required) + "' in '" +
                                path.string() + "'");
     }

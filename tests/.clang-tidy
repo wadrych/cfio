@@ -1,0 +1,7 @@
+---
+InheritParentConfig: true
+
+Checks: >
+  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -google-readability-avoid-underscore-in-googletest-name
+...

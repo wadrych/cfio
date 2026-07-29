@@ -22,7 +22,6 @@
 namespace cfio {
 
 /// @brief Runs a benchmark job on its own thread.
-///
 class WorkerThread {
  public:
   /// @brief Build a worker and open its engine
@@ -48,39 +47,46 @@ class WorkerThread {
   void Join();
 
   /// @brief Get the latency histogram
+  /// @return Completion latency histogram in nanoseconds
   [[nodiscard]] const Log2Histogram<64, std::uint64_t>& Histogram() const noexcept {
     return histogram_;
   }
 
   /// @brief Get number of completed IO ops
+  /// @return Count of successful and failed completions
   [[nodiscard]] std::uint64_t IopsCount() const noexcept {
     return iops_count_.load(std::memory_order_relaxed);
   }
 
   /// @brief Get total bytes read and written
+  /// @return Total transferred bytes
   [[nodiscard]] std::uint64_t BytesTransferred() const noexcept {
     return bytes_transferred_.load(std::memory_order_relaxed);
   }
 
   /// @brief Get number of failed read ops
+  /// @return Count of read errors
   [[nodiscard]] std::uint64_t ReadErrorCount() const noexcept {
     return read_error_count_.load(std::memory_order_relaxed);
   }
 
   /// @brief Get number of failed write ops
+  /// @return Count of write errors
   [[nodiscard]] std::uint64_t WriteErrorCount() const noexcept {
     return write_error_count_.load(std::memory_order_relaxed);
   }
 
-  /// @brief Get worker's job configuration
+  /// @brief Get the job configuration of this worker
+  /// @return The job configuration
   [[nodiscard]] const JobConfig& Config() const noexcept { return config_; }
 
   /// @brief Check if O_DIRECT stayed effective after the engine opened the file
+  /// @return True if the file was opened with O_DIRECT
   [[nodiscard]] bool DirectEffective() const noexcept { return direct_effective_; }
 
  private:
   /// @brief Thread entry point. Waits at the barrier, then run the IO loop.
-  /// @param start_barrier  Barrier for synchronized statart
+  /// @param start_barrier  Barrier for synchronized start
   /// @param g_running      Global run flag
   void Run(std::barrier<>& start_barrier, const std::atomic<bool>& g_running);
 

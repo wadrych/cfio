@@ -1,8 +1,8 @@
-/// @file offset_generator.h
-/// @brief Produces the next aligned file offset for a worker IO.
-
 #ifndef CFIO_TELEMETRY_OFFSET_GENERATOR_H_
 #define CFIO_TELEMETRY_OFFSET_GENERATOR_H_
+
+/// @file offset_generator.h
+/// @brief Produces the next aligned file offset for a worker IO.
 
 #include <sys/types.h>
 

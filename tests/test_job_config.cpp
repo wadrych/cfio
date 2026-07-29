@@ -1,6 +1,7 @@
 /// @file test_job_config.cpp
 /// @brief Unit tests for JobConfig helper methods.
 
+#include <array>
 #include <stdexcept>
 
 #include <gtest/gtest.h>
@@ -70,6 +71,54 @@ TEST(JobConfigDerivePattern, RandWriteIsRandom) {
 
 TEST(JobConfigDerivePattern, RandRWIsRandom) {
   EXPECT_EQ(JobConfig::DeriveAccessPattern(RWMode::kRandRW), AccessPattern::kRandom);
+}
+
+// --- ToString: RWMode ---
+
+TEST(JobConfigToString, RWModeRead) {
+  EXPECT_EQ(JobConfig::ToString(RWMode::kRead), "read");
+}
+
+TEST(JobConfigToString, RWModeWrite) {
+  EXPECT_EQ(JobConfig::ToString(RWMode::kWrite), "write");
+}
+
+TEST(JobConfigToString, RWModeRandRead) {
+  EXPECT_EQ(JobConfig::ToString(RWMode::kRandRead), "randread");
+}
+
+TEST(JobConfigToString, RWModeRandWrite) {
+  EXPECT_EQ(JobConfig::ToString(RWMode::kRandWrite), "randwrite");
+}
+
+TEST(JobConfigToString, RWModeReadWrite) {
+  EXPECT_EQ(JobConfig::ToString(RWMode::kReadWrite), "readwrite");
+}
+
+TEST(JobConfigToString, RWModeRandRW) {
+  EXPECT_EQ(JobConfig::ToString(RWMode::kRandRW), "randrw");
+}
+
+// --- ToString: AccessPattern ---
+
+TEST(JobConfigToString, AccessPatternSequential) {
+  EXPECT_EQ(JobConfig::ToString(AccessPattern::kSequential), "sequential");
+}
+
+TEST(JobConfigToString, AccessPatternRandom) {
+  EXPECT_EQ(JobConfig::ToString(AccessPattern::kRandom), "random");
+}
+
+// --- ToString / ParseRWMode ---
+
+TEST(JobConfigToString, RoundtripThroughParseRWMode) {
+  constexpr std::array<RWMode, 6> kAllModes{RWMode::kRead,      RWMode::kWrite,
+                                            RWMode::kRandRead,  RWMode::kRandWrite,
+                                            RWMode::kReadWrite, RWMode::kRandRW};
+
+  for (const RWMode mode : kAllModes) {
+    EXPECT_EQ(JobConfig::ParseRWMode(JobConfig::ToString(mode)), mode);
+  }
 }
 
 // --- EffectiveIODepth ---

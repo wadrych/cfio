@@ -10,8 +10,7 @@
 
 namespace cfio {
 
-AlignedBuffer::AlignedBuffer(size_t alignment, size_t size)
-    : data_(nullptr), size_(size), alignment_(alignment) {
+AlignedBuffer::AlignedBuffer(size_t alignment, size_t size) : size_(size), alignment_(alignment) {
   if (alignment == 0 || (alignment & (alignment - 1)) != 0) {
     throw std::invalid_argument("alignment must be a positive power of 2, got " +
                                 std::to_string(alignment));
@@ -34,6 +33,7 @@ AlignedBuffer::AlignedBuffer(size_t alignment, size_t size)
 }
 
 AlignedBuffer::~AlignedBuffer() {
+  // NOLINTNEXTLINE(cppcoreguidelines-no-malloc)
   std::free(data_);
 }
 

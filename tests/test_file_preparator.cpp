@@ -19,7 +19,7 @@ namespace cfio {
 namespace {
 
 constexpr size_t kBlockSize = 4096;
-constexpr size_t kSmallSize = 64 * 1024;
+constexpr size_t kSmallSize = size_t{64} * 1024;
 
 std::vector<char> ReadAll(const std::filesystem::path& path) {
   std::ifstream in(path, std::ios::binary);
@@ -29,7 +29,7 @@ std::vector<char> ReadAll(const std::filesystem::path& path) {
 class FilePreparatorTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
+    const auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
     temp_dir_ = std::filesystem::path(::testing::TempDir()) / ("cfio_" + std::string(info->name()));
     std::filesystem::create_directories(temp_dir_);
   }

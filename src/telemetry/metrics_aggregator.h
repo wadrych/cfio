@@ -21,7 +21,6 @@
 namespace cfio {
 
 /// @brief Get samples from worker and builds the time series.
-///
 class MetricsAggregator {
  public:
   /// @brief Build an aggregator over the given workers.
@@ -47,9 +46,11 @@ class MetricsAggregator {
   void TakeFinalSnapshot();
 
   /// @brief Get the most recent snapshot
+  /// @return The latest sample, empty if none has been taken yet
   [[nodiscard]] MetricsSnapshot LatestSnapshot() const;
 
   /// @brief Get the time series in chronological order
+  /// @return All samples collected so far, oldest first
   [[nodiscard]] std::vector<MetricsSnapshot> TimeSeries() const;
 
   /// @brief Build final results from worker totals and the time series

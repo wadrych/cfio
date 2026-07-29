@@ -16,14 +16,15 @@ namespace cfio {
 /// @brief Renders benchmark metrics as an in place ANSI table.
 class TerminalDisplay final : public IDisplay {
  public:
-  /// @brief Construct a terminal display
+  /// @brief Construct a terminal display writing to standard output
   /// @param context  Run metadata
   explicit TerminalDisplay(DisplayContext context);
 
   /// @brief Construct a terminal display writing to a given stream
   /// @param context  Run metadata
   /// @param out      Sink for rendered frames
-  TerminalDisplay(DisplayContext context, std::ostream& out);
+  /// @param ansi     Emit escape sequences and the live view
+  TerminalDisplay(DisplayContext context, std::ostream& out, bool ansi = true);
 
   TerminalDisplay(const TerminalDisplay&) = delete;
   TerminalDisplay& operator=(const TerminalDisplay&) = delete;
@@ -32,7 +33,7 @@ class TerminalDisplay final : public IDisplay {
 
   ~TerminalDisplay() override = default;
 
-  /// @brief Clear the screen, hide the cursor and paint the initial frame
+  /// @brief Enter the alternate screen, hide the cursor and paint the first frame
   /// @param runtime_seconds  Total run duration
   void Init(int runtime_seconds) override;
 
@@ -40,25 +41,33 @@ class TerminalDisplay final : public IDisplay {
   /// @param snapshot  Latest sample
   void Update(const MetricsSnapshot& snapshot) override;
 
-  /// @brief Post run summary
+  /// @brief Leave the alternate screen and print the post run summary
+  /// @param results  Final results
   void ShowSummary(const BenchmarkResults& results) override;
 
-  /// @brief Restore the cursor and leave it below the frame
+  /// @brief Restore the terminal if the live view is still up
   void Shutdown() override;
 
   /// @brief Build the full live frame as a string
   /// @param snapshot         Metrics to render
   /// @param elapsed_seconds  Elapsed time for the progress indicator
+  /// @return The rendered frame ready to write to the terminal
   [[nodiscard]] std::string RenderLiveView(const MetricsSnapshot& snapshot,
                                            int elapsed_seconds) const;
 
   /// @brief Build the summary
   /// @param results  Final results
+  /// @return The rendered summary ready to write to the terminal
   [[nodiscard]] std::string RenderSummary(const BenchmarkResults& results) const;
 
  private:
+  /// @brief Show the cursor and switch back to the primary screen
+  void LeaveAltScreen();
+
   DisplayContext context_;
   std::ostream* out_;
+  bool ansi_;
+  bool alt_active_ = false;
   int runtime_seconds_ = 0;
   std::chrono::steady_clock::time_point start_;
 };

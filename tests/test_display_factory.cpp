@@ -68,7 +68,7 @@ TEST(DisplayTest, FakeDisplayRecordsLifecycle) {
   const std::vector<std::string> expected = {"init", "update", "summary", "shutdown"};
   EXPECT_EQ(display.calls, expected);
   EXPECT_EQ(display.init_runtime, 30);
-  EXPECT_EQ(display.update_jobs, 2u);
+  EXPECT_EQ(display.update_jobs, 2U);
   EXPECT_EQ(display.summary_runtime, 30);
 }
 

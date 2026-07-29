@@ -17,7 +17,7 @@
 namespace cfio {
 
 /// @brief Asynchronous IO engine using the Linux AIO kernel interface.
-class LibaioEngine : public IEngineIO {
+class LibaioEngine final : public IEngineIO {
  public:
   LibaioEngine() = default;
   ~LibaioEngine() override;

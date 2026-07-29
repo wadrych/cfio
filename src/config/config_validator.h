@@ -10,7 +10,7 @@
 
 namespace cfio {
 
-/// Enforces all validation rules on parsed job configurations.
+/// @brief Enforces all validation rules on parsed job configurations.
 class ConfigValidator {
  public:
   /// Validate job configuration.

@@ -56,7 +56,7 @@ class FakeEngine : public IEngineIO {
   std::uint64_t total_completed = 0;
   std::uint64_t submits_after_stop = 0;
 
-  void Open(const JobConfig&) override {}
+  void Open(const JobConfig& /*config*/) override {}
 
   void SubmitIO(const IORequest& request) override {
     if (running != nullptr && !running->load(std::memory_order_relaxed)) {
@@ -146,9 +146,9 @@ TEST(WorkerThreadTest, SyncLoopCountersMatchCompletions) {
   EXPECT_EQ(raw->total_submitted, kTarget);
   EXPECT_EQ(raw->total_completed, kTarget);
   EXPECT_EQ(raw->in_flight, 0);
-  EXPECT_EQ(raw->submits_after_stop, 0u);
-  EXPECT_EQ(worker.ReadErrorCount(), 0u);
-  EXPECT_EQ(worker.WriteErrorCount(), 0u);
+  EXPECT_EQ(raw->submits_after_stop, 0U);
+  EXPECT_EQ(worker.ReadErrorCount(), 0U);
+  EXPECT_EQ(worker.WriteErrorCount(), 0U);
 }
 
 TEST(WorkerThreadTest, AsyncLoopKeepsQueueFull) {
@@ -194,7 +194,7 @@ TEST(WorkerThreadTest, AsyncLoopDrainsAfterStop) {
   worker.Join();
 
   EXPECT_EQ(raw->in_flight, 0);
-  EXPECT_EQ(raw->submits_after_stop, 0u);
+  EXPECT_EQ(raw->submits_after_stop, 0U);
   EXPECT_EQ(raw->total_submitted, raw->total_completed);
   EXPECT_EQ(worker.IopsCount(), raw->total_completed);
   EXPECT_GE(worker.IopsCount(), kTarget);
@@ -218,8 +218,8 @@ TEST(WorkerThreadTest, ReadErrorsCountedSeparately) {
 
   EXPECT_EQ(worker.IopsCount(), kTarget);
   EXPECT_EQ(worker.ReadErrorCount(), kTarget);
-  EXPECT_EQ(worker.WriteErrorCount(), 0u);
-  EXPECT_EQ(worker.BytesTransferred(), 0u);
+  EXPECT_EQ(worker.WriteErrorCount(), 0U);
+  EXPECT_EQ(worker.BytesTransferred(), 0U);
 }
 
 TEST(WorkerThreadTest, WriteErrorsCountedSeparately) {
@@ -240,8 +240,56 @@ TEST(WorkerThreadTest, WriteErrorsCountedSeparately) {
 
   EXPECT_EQ(worker.IopsCount(), kTarget);
   EXPECT_EQ(worker.WriteErrorCount(), kTarget);
-  EXPECT_EQ(worker.ReadErrorCount(), 0u);
-  EXPECT_EQ(worker.BytesTransferred(), 0u);
+  EXPECT_EQ(worker.ReadErrorCount(), 0U);
+  EXPECT_EQ(worker.BytesTransferred(), 0U);
+}
+
+TEST(WorkerThreadTest, ConfigReturnsConfiguredJob) {
+  auto config = MakeConfig("libaio", RWMode::kRandRead, 8);
+  const WorkerThread worker(config, std::make_unique<FakeEngine>());
+
+  EXPECT_EQ(worker.Config().name, config.name);
+  EXPECT_EQ(worker.Config().engine, "libaio");
+  EXPECT_EQ(worker.Config().rw_mode, RWMode::kRandRead);
+  EXPECT_EQ(worker.Config().iodepth, 8);
+}
+
+TEST(WorkerThreadTest, DirectEffectiveReflectsEngineWhenEnabled) {
+  constexpr std::uint64_t kTarget = 5;
+  auto config = MakeConfig("psync", RWMode::kRead, 1);
+
+  auto fake = std::make_unique<FakeEngine>();
+  fake->direct_enabled = true;
+  fake->stop_after = kTarget;
+
+  std::atomic<bool> g_running{true};
+  fake->running = &g_running;
+  WorkerThread worker(config, std::move(fake));
+
+  std::barrier<> start_barrier{1};
+  worker.Start(start_barrier, g_running);
+  worker.Join();
+
+  EXPECT_TRUE(worker.DirectEffective());
+}
+
+TEST(WorkerThreadTest, DirectEffectiveReflectsEngineWhenDisabled) {
+  constexpr std::uint64_t kTarget = 5;
+  auto config = MakeConfig("psync", RWMode::kRead, 1);
+
+  auto fake = std::make_unique<FakeEngine>();
+  fake->direct_enabled = false;
+  fake->stop_after = kTarget;
+
+  std::atomic<bool> g_running{true};
+  fake->running = &g_running;
+  WorkerThread worker(config, std::move(fake));
+
+  std::barrier<> start_barrier{1};
+  worker.Start(start_barrier, g_running);
+  worker.Join();
+
+  EXPECT_FALSE(worker.DirectEffective());
 }
 
 }  // namespace

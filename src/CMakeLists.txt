@@ -51,6 +51,11 @@ target_link_libraries(cfio-core
         PRIVATE ${LIBAIO_LIBRARY}
 )
 
+if(CFIO_ENABLE_COVERAGE)
+  target_compile_options(cfio-core PRIVATE ${CFIO_COVERAGE_COMPILE_OPTIONS})
+  target_link_options(cfio-core PUBLIC ${CFIO_COVERAGE_LINK_OPTIONS})
+endif()
+
 # cfio executable
 add_executable(cfio
         main.cpp

@@ -50,9 +50,12 @@
 # --- Build Artifacts ---
 cmake-build-*/
 build/
+build-*/
+coverage/
 compile_commands.json
 *.log
 # If using SPDK/DPDK, ignore the massive generated hugepage files
 hugepages/*
+cfio-results/*
 
 .DS_Store

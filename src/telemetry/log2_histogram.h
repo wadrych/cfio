@@ -1,8 +1,8 @@
-/// @file log2_histogram.h
-/// @brief Log-scale histogram for latency percentile tracking.
-
 #ifndef CFIO_TELEMETRY_LOG2_HISTOGRAM_H_
 #define CFIO_TELEMETRY_LOG2_HISTOGRAM_H_
+
+/// @file log2_histogram.h
+/// @brief Log-scale histogram for latency percentile tracking.
 
 #include <algorithm>
 #include <array>
@@ -48,8 +48,7 @@ class Log2Histogram {
     }
     const double clamped_p = std::clamp(p, 0.0, 1.0);
 
-    CounterType target =
-        static_cast<CounterType>(std::ceil(clamped_p * static_cast<double>(total)));
+    auto target = static_cast<CounterType>(std::ceil(clamped_p * static_cast<double>(total)));
     if (target < 1) {
       target = 1;
     }
@@ -67,6 +66,7 @@ class Log2Histogram {
   }
 
   /// @brief Returns the total number of recorded values.
+  /// @return Sum of all bucket counters.
   [[nodiscard]] CounterType TotalCount() const noexcept {
     CounterType total = 0;
     for (const auto& bucket : buckets_) {
@@ -75,8 +75,8 @@ class Log2Histogram {
     return total;
   }
 
-  /// @brief Returns the lower bound of the first non empty bucket, or 0 when the
-  ///        histogram is empty.
+  /// @brief Returns the lower bound of the first non empty bucket.
+  /// @return The smallest observable value, or zero when the histogram is empty.
   [[nodiscard]] std::uint64_t MinValue() const noexcept {
     for (std::size_t index = 0; index < BucketCount; ++index) {
       if (buckets_[index].load(std::memory_order_relaxed) != 0) {
@@ -86,8 +86,8 @@ class Log2Histogram {
     return 0;
   }
 
-  /// @brief Returns the upper bound of the last non empty bucket, or 0 when the
-  ///        histogram is empty.
+  /// @brief Returns the upper bound of the last non empty bucket.
+  /// @return The largest observable value, or zero when the histogram is empty.
   [[nodiscard]] std::uint64_t MaxValue() const noexcept {
     for (std::size_t index = BucketCount; index > 0; --index) {
       if (buckets_[index - 1].load(std::memory_order_relaxed) != 0) {

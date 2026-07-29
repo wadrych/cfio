@@ -3,6 +3,7 @@
 
 #include "reporting/results_exporter.h"
 
+#include <cmath>
 #include <cstddef>
 #include <fstream>
 #include <stdexcept>
@@ -21,6 +22,14 @@
 namespace cfio {
 
 namespace {
+
+constexpr double kSecondsScale = 1000.0;
+
+/// @brief Round a duration to three decimals
+/// @param seconds  Duration to round
+double RoundSeconds(double seconds) {
+  return std::round(seconds * kSecondsScale) / kSecondsScale;
+}
 
 nlohmann::ordered_json JobConfigToJson(const JobConfig& config) {
   nlohmann::ordered_json out;
@@ -74,6 +83,8 @@ void ResultsExporter::ExportJson(const BenchmarkResults& results,
   root["cfio_version"] = results.cfio_version;
   root["timestamp"] = results.timestamp;
   root["runtime_seconds"] = results.runtime_seconds;
+  root["elapsed_seconds"] = RoundSeconds(results.elapsed_seconds);
+  root["interrupted"] = results.interrupted;
   root["global_config"] = GlobalConfigToJson(results.global_config);
 
   nlohmann::ordered_json jobs = nlohmann::ordered_json::array();
@@ -98,7 +109,7 @@ void ResultsExporter::ExportJson(const BenchmarkResults& results,
     throw std::runtime_error("failed writing output file: '" + out_path.string() + "'");
   }
 
-  Logger::get()->info("wrote summary to '{}'", out_path.string());
+  Logger::Get()->info("wrote summary to '{}'", out_path.string());
 }
 
 void ResultsExporter::ExportCsv(const std::vector<MetricsSnapshot>& time_series,
@@ -124,7 +135,7 @@ void ResultsExporter::ExportCsv(const std::vector<MetricsSnapshot>& time_series,
     throw std::runtime_error("failed writing output file: '" + out_path.string() + "'");
   }
 
-  Logger::get()->info("wrote timeseries to '{}'", out_path.string());
+  Logger::Get()->info("wrote timeseries to '{}'", out_path.string());
 }
 
 }  // namespace cfio

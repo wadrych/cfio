@@ -1,8 +1,8 @@
-/// @file benchmark_results.h
-/// @brief Final results after a benchmark completes
-
 #ifndef CFIO_TELEMETRY_BENCHMARK_RESULTS_H_
 #define CFIO_TELEMETRY_BENCHMARK_RESULTS_H_
+
+/// @file benchmark_results.h
+/// @brief Final results after a benchmark completes
 
 #include <cstdint>
 #include <string>
@@ -14,9 +14,9 @@
 
 namespace cfio {
 
-/// Cumulative results for a single job over the whole run
+/// @brief Cumulative results for a single job over the whole run
 struct JobResults {
-  std::string name;
+  std::string name;         ///< Job name from the configuration
   JobConfig config;         ///< Configuration this job ran with
   uint64_t iops_avg{};      ///< Average IOPS over the run
   uint64_t bw_avg_bytes{};  ///< Average bandwidth
@@ -32,11 +32,13 @@ struct JobResults {
   bool direct_effective{};  ///< True if O_DIRECT on
 };
 
-/// Full result set for a benchmark
+/// @brief Full result set for a benchmark
 struct BenchmarkResults {
   std::string cfio_version;                  ///< Tool version string
   std::string timestamp;                     ///< Run start time
   int runtime_seconds{};                     ///< Configured run duration
+  double elapsed_seconds{};                  ///< Measured run duration
+  bool interrupted{};                        ///< True when the run stopped before the deadline
   CliOptions global_config;                  ///< Global runtime options
   std::vector<JobResults> jobs;              ///< Final per-job results
   std::vector<MetricsSnapshot> time_series;  ///< Per-sample history

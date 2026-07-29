@@ -10,11 +10,10 @@
 namespace cfio {
 
 /// @brief Run data shown in the display
-///
 struct DisplayContext {
-  std::string engine_label;
-  std::string direct_label;
-  std::filesystem::path log_path;
+  std::string engine_label;        ///< Engine name shown in the header
+  std::string direct_label;        ///< Text describing whether O_DIRECT is active
+  std::filesystem::path log_path;  ///< Path of the log file for this run
 };
 
 }  // namespace cfio

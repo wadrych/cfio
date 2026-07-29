@@ -24,13 +24,13 @@ size_t SizeParser::Parse(const std::string& size_str, AllowedSuffixes allowed) {
     throw std::invalid_argument("size string is empty");
   }
 
-  if (!std::isdigit(static_cast<unsigned char>(size_str[0]))) {
+  if (std::isdigit(static_cast<unsigned char>(size_str[0])) == 0) {
     throw std::invalid_argument("size string must start with a digit: '" + size_str + "'");
   }
 
   // Find where digits end.
   size_t pos = 0;
-  while (pos < size_str.size() && std::isdigit(static_cast<unsigned char>(size_str[pos]))) {
+  while (pos < size_str.size() && std::isdigit(static_cast<unsigned char>(size_str[pos])) != 0) {
     ++pos;
   }
 
@@ -54,7 +54,7 @@ size_t SizeParser::Parse(const std::string& size_str, AllowedSuffixes allowed) {
 
   // Match the suffix (case-insensitive).
   size_t multiplier = 0;
-  char suffix = size_str[pos];
+  const char suffix = size_str[pos];
   switch (suffix) {
     case 'k':
     case 'K':

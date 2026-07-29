@@ -19,7 +19,7 @@ WorkerThread::WorkerThread(JobConfig config, std::unique_ptr<IEngineIO> engine)
       direction_decider_(config_.rw_mode, config_.rwmixread),
       io_buffer_(config_.alignment, config_.block_size) {
   if (config_.iodepth > 1 && EngineFactory::IsSynchronousEngine(config_.engine)) {
-    Logger::get()->warn("job '{}': engine '{}' is synchronous, iodepth {} is ignored", config_.name,
+    Logger::Get()->warn("job '{}': engine '{}' is synchronous, iodepth {} is ignored", config_.name,
                         config_.engine, config_.iodepth);
   }
 
@@ -41,7 +41,7 @@ void WorkerThread::Run(std::barrier<>& start_barrier, const std::atomic<bool>& g
   start_barrier.arrive_and_wait();
 
   const int effective_iodepth = config_.EffectiveIODepth();
-  Logger::get()->debug("worker '{}' started, effective iodepth {}", config_.name,
+  Logger::Get()->debug("worker '{}' started, effective iodepth {}", config_.name,
                        effective_iodepth);
 
   if (effective_iodepth == 1) {
@@ -109,7 +109,7 @@ void WorkerThread::SubmitOne() {
 IORequest WorkerThread::GenerateNextIO() noexcept {
   IORequest request;
   request.offset = offset_gen_.Next();
-  request.buffer = io_buffer_.data();
+  request.buffer = io_buffer_.Data();
   request.length = config_.block_size;
   request.direction = direction_decider_.Next();
   request.id = next_request_id_++;

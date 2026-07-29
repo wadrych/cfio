@@ -1,15 +1,14 @@
-/// @file aligned_buffer.h
-/// @brief RAII wrapper for aligned memory allocation, used for O_DIRECT buffers.
-
 #ifndef CFIO_TELEMETRY_ALIGNED_BUFFER_H_
 #define CFIO_TELEMETRY_ALIGNED_BUFFER_H_
+
+/// @file aligned_buffer.h
+/// @brief RAII wrapper for aligned memory allocation, used for O_DIRECT buffers.
 
 #include <cstddef>
 
 namespace cfio {
 
 /// @brief Owns a block of memory aligned for O_DIRECT IO.
-///
 class AlignedBuffer {
  public:
   /// @brief Allocates an aligned memory block.
@@ -25,30 +24,38 @@ class AlignedBuffer {
   ~AlignedBuffer();
 
   /// @brief Move constructor. Transfers ownership, leaves source empty.
+  /// @param other  Buffer to move from.
   AlignedBuffer(AlignedBuffer&& other) noexcept;
 
   /// @brief Move assignment. Swaps contents so the old resource is freed
   ///        when the source is destroyed. Swap guarantees self-assignment
   ///        safety without a branch.
+  /// @param other  Buffer to move from.
+  /// @return Reference to this buffer.
   AlignedBuffer& operator=(AlignedBuffer&& other) noexcept;
 
   AlignedBuffer(const AlignedBuffer&) = delete;
   AlignedBuffer& operator=(const AlignedBuffer&) = delete;
 
   /// @brief Returns a mutable pointer to the aligned memory.
-  void* data() noexcept { return data_; }
+  /// @return Pointer to the allocation, or nullptr if the buffer is empty.
+  void* Data() noexcept { return data_; }
 
   /// @brief Returns a const pointer to the aligned memory.
-  const void* data() const noexcept { return data_; }
+  /// @return Pointer to the allocation, or nullptr if the buffer is empty.
+  [[nodiscard]] const void* Data() const noexcept { return data_; }
 
   /// @brief Returns the buffer size in bytes.
-  [[nodiscard]] size_t size() const noexcept { return size_; }
+  /// @return Size in bytes, zero if the buffer is empty.
+  [[nodiscard]] size_t Size() const noexcept { return size_; }
 
   /// @brief Returns the alignment in bytes.
-  [[nodiscard]] size_t alignment() const noexcept { return alignment_; }
+  /// @return Alignment in bytes, zero if the buffer is empty.
+  [[nodiscard]] size_t Alignment() const noexcept { return alignment_; }
 
-  /// @brief Returns true if the buffer holds no allocation, e.g. moved-from.
-  [[nodiscard]] bool empty() const noexcept { return data_ == nullptr; }
+  /// @brief Returns true if the buffer holds no allocation, e.g. moved from.
+  /// @return True if there is no allocation.
+  [[nodiscard]] bool Empty() const noexcept { return data_ == nullptr; }
 
  private:
   void* data_ = nullptr;

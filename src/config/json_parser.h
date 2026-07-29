@@ -12,16 +12,17 @@
 
 namespace cfio {
 
-/// Parses a JSON configuration file into a list of job configurations.
+/// @brief Parses a JSON configuration file into a list of job configurations.
+///
 /// Expects the root object to contain a "jobs" array.
 class JsonParser : public IConfigParser {
  public:
-  /// Parse a JSON configuration file.
+  /// @brief Parse a JSON configuration file.
   /// @param path Path to the JSON file.
   /// @return A vector of parsed job configurations.
   /// @throws std::runtime_error on I/O errors or malformed JSON.
   /// @throws std::invalid_argument on invalid field values.
-  std::vector<JobConfig> Parse(const std::filesystem::path& path) const override;
+  [[nodiscard]] std::vector<JobConfig> Parse(const std::filesystem::path& path) const override;
 };
 
 }  // namespace cfio

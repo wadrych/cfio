@@ -27,18 +27,6 @@
 #include "telemetry/aligned_buffer.h"
 
 namespace cfio {
-
-// -- Logger environment: GTest manages init/shutdown around all tests --------
-
-class LoggerEnvironment : public ::testing::Environment {
- public:
-  void SetUp() override {
-    auto log_path = std::filesystem::path{::testing::TempDir()} / "cfio_engine_test.log";
-    Logger::init(log_path, /*verbose=*/false);
-  }
-  void TearDown() override { Logger::shutdown(); }
-};
-
 namespace {
 
 // -- Constants ---------------------------------------------------------------
@@ -109,7 +97,7 @@ class TempFile {
     std::string tmpl = dir + "/cfio_test_XXXXXX";
     std::vector<char> buf(tmpl.begin(), tmpl.end());
     buf.push_back('\0');
-    int fd = ::mkstemp(buf.data());
+    int const fd = ::mkstemp(buf.data());
     if (fd < 0) {
       throw std::system_error(errno, std::system_category(), "mkstemp");
     }
@@ -136,8 +124,10 @@ class TempFile {
 
   TempFile(const TempFile&) = delete;
   TempFile& operator=(const TempFile&) = delete;
+  TempFile(TempFile&&) = delete;
+  TempFile& operator=(TempFile&&) = delete;
 
-  const std::filesystem::path& path() const { return path_; }
+  [[nodiscard]] const std::filesystem::path& Path() const { return path_; }
 
  private:
   std::filesystem::path path_;
@@ -220,7 +210,7 @@ class SyncEngineTypedTest : public ::testing::Test {
       static_assert(std::is_same_v<T, SyncEngine>, "unhandled sync engine");
       name = "sync";
     }
-    return MakeTestConfig(name, tmp_->path());
+    return MakeTestConfig(name, tmp_->Path());
   }
 
   T engine_;
@@ -235,41 +225,41 @@ TYPED_TEST(SyncEngineTypedTest, WriteAndReadBack) {
 
   AlignedBuffer write_buf(kBlockSize, kBlockSize);
   AlignedBuffer read_buf(kBlockSize, kBlockSize);
-  std::memset(write_buf.data(), 0xA5, kBlockSize);
-  std::memset(read_buf.data(), 0x00, kBlockSize);
+  std::memset(write_buf.Data(), 0xA5, kBlockSize);
+  std::memset(read_buf.Data(), 0x00, kBlockSize);
 
   // Write
-  auto wreq = MakeRequest(1, 0, write_buf.data(), kBlockSize, IODirection::kWrite);
+  auto wreq = MakeRequest(1, 0, write_buf.Data(), kBlockSize, IODirection::kWrite);
   this->engine_.SubmitIO(wreq);
 
   std::vector<IOCompletion> out;
   this->engine_.PollCompletions(1, 1, out);
-  ASSERT_EQ(out.size(), 1u);
+  ASSERT_EQ(out.size(), 1U);
   ExpectSuccessfulCompletion(out[0], 1, IODirection::kWrite, static_cast<ssize_t>(kBlockSize));
 
   // Read back into a separate buffer
   out.clear();
-  auto rreq = MakeRequest(2, 0, read_buf.data(), kBlockSize, IODirection::kRead);
+  auto rreq = MakeRequest(2, 0, read_buf.Data(), kBlockSize, IODirection::kRead);
   this->engine_.SubmitIO(rreq);
   this->engine_.PollCompletions(1, 1, out);
-  ASSERT_EQ(out.size(), 1u);
+  ASSERT_EQ(out.size(), 1U);
   ExpectSuccessfulCompletion(out[0], 2, IODirection::kRead, static_cast<ssize_t>(kBlockSize));
 
-  EXPECT_EQ(std::memcmp(read_buf.data(), write_buf.data(), kBlockSize), 0);
+  EXPECT_EQ(std::memcmp(read_buf.Data(), write_buf.Data(), kBlockSize), 0);
 }
 
 TYPED_TEST(SyncEngineTypedTest, CompletionFieldsOnWrite) {
   this->engine_.Open(this->MakeConfig());
 
   AlignedBuffer buf(kBlockSize, kBlockSize);
-  std::memset(buf.data(), 0xBB, kBlockSize);
+  std::memset(buf.Data(), 0xBB, kBlockSize);
 
-  auto req = MakeRequest(42, 0, buf.data(), kBlockSize, IODirection::kWrite);
+  auto req = MakeRequest(42, 0, buf.Data(), kBlockSize, IODirection::kWrite);
   this->engine_.SubmitIO(req);
 
   std::vector<IOCompletion> out;
   this->engine_.PollCompletions(1, 1, out);
-  ASSERT_EQ(out.size(), 1u);
+  ASSERT_EQ(out.size(), 1U);
   ExpectSuccessfulCompletion(out[0], 42, IODirection::kWrite, static_cast<ssize_t>(kBlockSize));
   EXPECT_EQ(out[0].submit_time, req.submit_time);
 }
@@ -278,14 +268,14 @@ TYPED_TEST(SyncEngineTypedTest, CompletionFieldsOnRead) {
   this->engine_.Open(this->MakeConfig());
 
   AlignedBuffer buf(kBlockSize, kBlockSize);
-  std::memset(buf.data(), 0x00, kBlockSize);
+  std::memset(buf.Data(), 0x00, kBlockSize);
 
-  auto req = MakeRequest(99, 0, buf.data(), kBlockSize, IODirection::kRead);
+  auto req = MakeRequest(99, 0, buf.Data(), kBlockSize, IODirection::kRead);
   this->engine_.SubmitIO(req);
 
   std::vector<IOCompletion> out;
   this->engine_.PollCompletions(1, 1, out);
-  ASSERT_EQ(out.size(), 1u);
+  ASSERT_EQ(out.size(), 1U);
   ExpectSuccessfulCompletion(out[0], 99, IODirection::kRead, static_cast<ssize_t>(kBlockSize));
   EXPECT_EQ(out[0].submit_time, req.submit_time);
 }
@@ -299,14 +289,14 @@ TYPED_TEST(SyncEngineTypedTest, OpenCloseLifecycle) {
   this->engine_.Open(config);
 
   AlignedBuffer buf(kBlockSize, kBlockSize);
-  std::memset(buf.data(), 0x00, kBlockSize);
+  std::memset(buf.Data(), 0x00, kBlockSize);
 
-  auto req = MakeRequest(1, 0, buf.data(), kBlockSize, IODirection::kRead);
+  auto req = MakeRequest(1, 0, buf.Data(), kBlockSize, IODirection::kRead);
   this->engine_.SubmitIO(req);
 
   std::vector<IOCompletion> out;
   this->engine_.PollCompletions(1, 1, out);
-  ASSERT_EQ(out.size(), 1u);
+  ASSERT_EQ(out.size(), 1U);
   EXPECT_TRUE(out[0].success);
 }
 
@@ -317,7 +307,7 @@ TYPED_TEST(SyncEngineTypedTest, DoubleOpenThrows) {
 
 TYPED_TEST(SyncEngineTypedTest, SubmitBeforeOpenThrows) {
   AlignedBuffer buf(kBlockSize, kBlockSize);
-  auto req = MakeRequest(1, 0, buf.data(), kBlockSize, IODirection::kRead);
+  auto req = MakeRequest(1, 0, buf.Data(), kBlockSize, IODirection::kRead);
   EXPECT_THROW(this->engine_.SubmitIO(req), std::runtime_error);
 }
 
@@ -325,10 +315,10 @@ TYPED_TEST(SyncEngineTypedTest, DoubleSubmitWithoutPollThrows) {
   this->engine_.Open(this->MakeConfig());
 
   AlignedBuffer buf(kBlockSize, kBlockSize);
-  auto req1 = MakeRequest(1, 0, buf.data(), kBlockSize, IODirection::kRead);
+  auto req1 = MakeRequest(1, 0, buf.Data(), kBlockSize, IODirection::kRead);
   this->engine_.SubmitIO(req1);
 
-  auto req2 = MakeRequest(2, 0, buf.data(), kBlockSize, IODirection::kRead);
+  auto req2 = MakeRequest(2, 0, buf.Data(), kBlockSize, IODirection::kRead);
   EXPECT_THROW(this->engine_.SubmitIO(req2), std::logic_error);
 }
 
@@ -363,7 +353,7 @@ class AsyncEngineTypedTest : public ::testing::Test {
       static_assert(std::is_same_v<T, LibaioEngine>, "unhandled async engine");
       name = "libaio";
     }
-    auto cfg = MakeTestConfig(name, tmp_->path());
+    auto cfg = MakeTestConfig(name, tmp_->Path());
     cfg.iodepth = iodepth;
     return cfg;
   }
@@ -384,12 +374,12 @@ TYPED_TEST(AsyncEngineTypedTest, AsyncWriteAndRead) {
   std::vector<AlignedBuffer> wbufs;
   for (int i = 0; i < kAsyncDepth; ++i) {
     wbufs.emplace_back(kBlockSize, kBlockSize);
-    std::memset(wbufs.back().data(), static_cast<int>(0xA0 + i), kBlockSize);
+    std::memset(wbufs.back().Data(), 0xA0 + i, kBlockSize);
   }
 
   for (int i = 0; i < kAsyncDepth; ++i) {
     auto offset = static_cast<off_t>(i * kBlockSize);
-    auto req = MakeRequest(static_cast<uint64_t>(i), offset, wbufs[static_cast<size_t>(i)].data(),
+    auto req = MakeRequest(static_cast<uint64_t>(i), offset, wbufs[static_cast<size_t>(i)].Data(),
                            kBlockSize, IODirection::kWrite);
     this->engine_.SubmitIO(req);
   }
@@ -407,13 +397,13 @@ TYPED_TEST(AsyncEngineTypedTest, AsyncWriteAndRead) {
   std::vector<AlignedBuffer> rbufs;
   for (int i = 0; i < kAsyncDepth; ++i) {
     rbufs.emplace_back(kBlockSize, kBlockSize);
-    std::memset(rbufs.back().data(), 0x00, kBlockSize);
+    std::memset(rbufs.back().Data(), 0x00, kBlockSize);
   }
 
   for (int i = 0; i < kAsyncDepth; ++i) {
     auto offset = static_cast<off_t>(i * kBlockSize);
-    auto req = MakeRequest(static_cast<uint64_t>(10 + i), offset,
-                           rbufs[static_cast<size_t>(i)].data(), kBlockSize, IODirection::kRead);
+    auto req = MakeRequest(static_cast<uint64_t>(i) + 10, offset,
+                           rbufs[static_cast<size_t>(i)].Data(), kBlockSize, IODirection::kRead);
     this->engine_.SubmitIO(req);
   }
 
@@ -430,7 +420,7 @@ TYPED_TEST(AsyncEngineTypedTest, AsyncWriteAndRead) {
   for (const auto& c : out) {
     auto idx = static_cast<size_t>(c.id - 10);
     ASSERT_LT(idx, static_cast<size_t>(kAsyncDepth));
-    EXPECT_EQ(std::memcmp(rbufs[idx].data(), wbufs[idx].data(), kBlockSize), 0)
+    EXPECT_EQ(std::memcmp(rbufs[idx].Data(), wbufs[idx].Data(), kBlockSize), 0)
         << "data mismatch at offset " << idx * kBlockSize;
   }
 }
@@ -442,24 +432,24 @@ TYPED_TEST(AsyncEngineTypedTest, CompletionDirection) {
   }
 
   AlignedBuffer wbuf(kBlockSize, kBlockSize);
-  std::memset(wbuf.data(), 0xCC, kBlockSize);
+  std::memset(wbuf.Data(), 0xCC, kBlockSize);
 
-  auto wreq = MakeRequest(1, 0, wbuf.data(), kBlockSize, IODirection::kWrite);
+  auto wreq = MakeRequest(1, 0, wbuf.Data(), kBlockSize, IODirection::kWrite);
   this->engine_.SubmitIO(wreq);
 
   std::vector<IOCompletion> out;
   this->engine_.PollCompletions(1, 1, out);
-  ASSERT_EQ(out.size(), 1u);
+  ASSERT_EQ(out.size(), 1U);
   EXPECT_EQ(out[0].direction, IODirection::kWrite);
   EXPECT_EQ(out[0].submit_time, wreq.submit_time);
 
   AlignedBuffer rbuf(kBlockSize, kBlockSize);
-  auto rreq = MakeRequest(2, 0, rbuf.data(), kBlockSize, IODirection::kRead);
+  auto rreq = MakeRequest(2, 0, rbuf.Data(), kBlockSize, IODirection::kRead);
   this->engine_.SubmitIO(rreq);
 
   out.clear();
   this->engine_.PollCompletions(1, 1, out);
-  ASSERT_EQ(out.size(), 1u);
+  ASSERT_EQ(out.size(), 1U);
   EXPECT_EQ(out[0].direction, IODirection::kRead);
   EXPECT_EQ(out[0].submit_time, rreq.submit_time);
 }
@@ -471,23 +461,23 @@ TYPED_TEST(AsyncEngineTypedTest, OpenCloseLifecycle) {
   }
 
   AlignedBuffer buf(kBlockSize, kBlockSize);
-  std::memset(buf.data(), 0x00, kBlockSize);
-  auto req = MakeRequest(1, 0, buf.data(), kBlockSize, IODirection::kRead);
+  std::memset(buf.Data(), 0x00, kBlockSize);
+  auto req = MakeRequest(1, 0, buf.Data(), kBlockSize, IODirection::kRead);
   this->engine_.SubmitIO(req);
 
   std::vector<IOCompletion> out;
   this->engine_.PollCompletions(1, 1, out);
-  ASSERT_EQ(out.size(), 1u);
+  ASSERT_EQ(out.size(), 1U);
   EXPECT_TRUE(out[0].success);
 
   this->engine_.Close();
 
   this->engine_.Open(config);
   out.clear();
-  auto req2 = MakeRequest(2, 0, buf.data(), kBlockSize, IODirection::kRead);
+  auto req2 = MakeRequest(2, 0, buf.Data(), kBlockSize, IODirection::kRead);
   this->engine_.SubmitIO(req2);
   this->engine_.PollCompletions(1, 1, out);
-  ASSERT_EQ(out.size(), 1u);
+  ASSERT_EQ(out.size(), 1U);
   EXPECT_TRUE(out[0].success);
 }
 
@@ -501,7 +491,7 @@ TYPED_TEST(AsyncEngineTypedTest, DoubleOpenThrows) {
 
 TYPED_TEST(AsyncEngineTypedTest, SubmitBeforeOpenThrows) {
   AlignedBuffer buf(kBlockSize, kBlockSize);
-  auto req = MakeRequest(1, 0, buf.data(), kBlockSize, IODirection::kRead);
+  auto req = MakeRequest(1, 0, buf.Data(), kBlockSize, IODirection::kRead);
   EXPECT_THROW(this->engine_.SubmitIO(req), std::runtime_error);
 }
 
@@ -541,7 +531,7 @@ class DirectFallbackTest : public ::testing::Test {
       GTEST_SKIP() << "/dev/shm not writable";
     }
     shm_tmp_ = std::make_unique<TempFile>("/dev/shm");
-    if (!DirectIoRejectedByFs(shm_tmp_->path())) {
+    if (!DirectIoRejectedByFs(shm_tmp_->Path())) {
       GTEST_SKIP() << "kernel tmpfs accepts O_DIRECT, cannot exercise fallback path";
     }
   }
@@ -552,7 +542,7 @@ class DirectFallbackTest : public ::testing::Test {
 };
 
 TEST_F(DirectFallbackTest, FallsBackOnTmpfs_psync) {
-  auto cfg = MakeTestConfig("psync", shm_tmp_->path());
+  auto cfg = MakeTestConfig("psync", shm_tmp_->Path());
   cfg.direct = true;
 
   PsyncEngine engine;
@@ -563,7 +553,7 @@ TEST_F(DirectFallbackTest, FallsBackOnTmpfs_psync) {
 }
 
 TEST_F(DirectFallbackTest, FallsBackOnTmpfs_sync) {
-  auto cfg = MakeTestConfig("sync", shm_tmp_->path());
+  auto cfg = MakeTestConfig("sync", shm_tmp_->Path());
   cfg.direct = true;
 
   SyncEngine engine;
@@ -574,7 +564,7 @@ TEST_F(DirectFallbackTest, FallsBackOnTmpfs_sync) {
 }
 
 TEST_F(DirectFallbackTest, FallsBackOnTmpfs_io_uring) {
-  auto cfg = MakeTestConfig("io_uring", shm_tmp_->path());
+  auto cfg = MakeTestConfig("io_uring", shm_tmp_->Path());
   cfg.direct = true;
   cfg.iodepth = 1;
 
@@ -588,7 +578,7 @@ TEST_F(DirectFallbackTest, FallsBackOnTmpfs_io_uring) {
 }
 
 TEST_F(DirectFallbackTest, FallsBackOnTmpfs_libaio) {
-  auto cfg = MakeTestConfig("libaio", shm_tmp_->path());
+  auto cfg = MakeTestConfig("libaio", shm_tmp_->Path());
   cfg.direct = true;
   cfg.iodepth = 1;
 
@@ -603,9 +593,3 @@ TEST_F(DirectFallbackTest, FallsBackOnTmpfs_libaio) {
 
 }  // namespace
 }  // namespace cfio
-
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  ::testing::AddGlobalTestEnvironment(new cfio::LoggerEnvironment);
-  return RUN_ALL_TESTS();
-}

@@ -42,7 +42,7 @@ void ReserveSpace(int fd, size_t file_size, const std::string& path_str) {
   }
   const int saved_errno = errno;
   if (saved_errno == EOPNOTSUPP || saved_errno == ENOSYS) {
-    Logger::get()->warn("fallocate unsupported for '{}', space reserved by writes", path_str);
+    Logger::Get()->warn("fallocate unsupported for '{}', space reserved by writes", path_str);
     return;
   }
   throw std::system_error(saved_errno, std::system_category(),
@@ -107,7 +107,7 @@ void FilePreparator::CreateAndFill(const JobConfig& config) {
 
   if (::close(fd) != 0) {
     const int saved_errno = errno;
-    Logger::get()->warn("FilePreparator::CreateAndFill - close failed with errno {}", saved_errno);
+    Logger::Get()->warn("FilePreparator::CreateAndFill - close failed with errno {}", saved_errno);
   }
 
   created_.push_back({config.filename, pre_existed});
@@ -121,7 +121,7 @@ void FilePreparator::Cleanup() {
 
   for (const CreatedFile& file : created_) {
     if (keep_files_) {
-      Logger::get()->info("keeping file '{}'", file.path.string());
+      Logger::Get()->info("keeping file '{}'", file.path.string());
       continue;
     }
     if (file.pre_existed) {
@@ -130,7 +130,7 @@ void FilePreparator::Cleanup() {
     std::error_code ec;
     std::filesystem::remove(file.path, ec);
     if (ec) {
-      Logger::get()->warn("failed to delete '{}': {}", file.path.string(), ec.message());
+      Logger::Get()->warn("failed to delete '{}': {}", file.path.string(), ec.message());
     }
   }
 }

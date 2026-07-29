@@ -78,21 +78,22 @@ MetricsSnapshot MakeSnapshot(std::vector<PerJobMetrics> jobs) {
 class ResultsExporterTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
-    temp_dir_ = std::filesystem::path(::testing::TempDir()) / ("cfio_export_" + std::string(info->name()));
+    const auto* info = ::testing::UnitTest::GetInstance()->current_test_info();
+    temp_dir_ =
+        std::filesystem::path(::testing::TempDir()) / ("cfio_export_" + std::string(info->name()));
     std::filesystem::create_directories(temp_dir_);
   }
 
   void TearDown() override { std::filesystem::remove_all(temp_dir_); }
 
-  nlohmann::json ReadSummary() const {
+  [[nodiscard]] nlohmann::json ReadSummary() const {
     std::ifstream in(temp_dir_ / "summary.json");
     nlohmann::json parsed;
     in >> parsed;
     return parsed;
   }
 
-  std::vector<std::string> ReadTimeseriesLines() const {
+  [[nodiscard]] std::vector<std::string> ReadTimeseriesLines() const {
     std::ifstream in(temp_dir_ / "timeseries.csv");
     std::vector<std::string> lines;
     std::string line;
@@ -110,6 +111,7 @@ TEST_F(ResultsExporterTest, WritesTopLevelFields) {
   results.cfio_version = "0.1.0";
   results.timestamp = "2026-03-22T13:15:00Z";
   results.runtime_seconds = 60;
+  results.elapsed_seconds = 60.1234;
   results.jobs.push_back(MakeJobResults("rand-read-4k", RWMode::kRandRead, 0, 0, true));
 
   ResultsExporter::ExportJson(results, temp_dir_);
@@ -119,8 +121,25 @@ TEST_F(ResultsExporterTest, WritesTopLevelFields) {
   EXPECT_EQ(root.at("cfio_version"), "0.1.0");
   EXPECT_EQ(root.at("timestamp"), "2026-03-22T13:15:00Z");
   EXPECT_EQ(root.at("runtime_seconds"), 60);
+  EXPECT_DOUBLE_EQ(root.at("elapsed_seconds"), 60.123);
+  EXPECT_FALSE(root.at("interrupted"));
   EXPECT_TRUE(root.at("jobs").is_array());
   EXPECT_EQ(root.at("jobs").size(), 1U);
+}
+
+TEST_F(ResultsExporterTest, WritesInterruptedRunDuration) {
+  BenchmarkResults results;
+  results.runtime_seconds = 30;
+  results.elapsed_seconds = 4.5;
+  results.interrupted = true;
+  results.jobs.push_back(MakeJobResults("rand-read-4k", RWMode::kRandRead, 0, 0, true));
+
+  ResultsExporter::ExportJson(results, temp_dir_);
+
+  const nlohmann::json root = ReadSummary();
+  EXPECT_EQ(root.at("runtime_seconds"), 30);
+  EXPECT_DOUBLE_EQ(root.at("elapsed_seconds"), 4.5);
+  EXPECT_TRUE(root.at("interrupted"));
 }
 
 TEST_F(ResultsExporterTest, GlobalConfigNullWhenNoOverrides) {

@@ -86,7 +86,7 @@ void PsyncEngine::Close() {
     fd_ = -1;
     if (result == -1) {
       const int saved_errno = errno;
-      Logger::get()->warn("PsyncEngine::Close -- close failed with errno {}", saved_errno);
+      Logger::Get()->warn("PsyncEngine::Close -- close failed with errno {}", saved_errno);
     }
   }
   has_completion_ = false;

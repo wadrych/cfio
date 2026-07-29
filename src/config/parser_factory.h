@@ -11,12 +11,12 @@
 
 namespace cfio {
 
-/// Creates the appropriate IConfigParser implementation based on the
-/// config file extension (.json or .csv).
+/// @brief Creates the appropriate IConfigParser implementation based on the
+/// config file extension, either .json or .csv.
 class ParserFactory {
  public:
   ParserFactory() = delete;
-  /// Create a parser for the given configuration file.
+  /// @brief Create a parser for the given configuration file.
   /// @param config_path Path to the configuration file.
   /// @return A parser capable of reading the file format.
   /// @throws std::invalid_argument if the file extension is not supported.

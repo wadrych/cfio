@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <array>
 #include <cerrno>
 #include <chrono>
 #include <cstdint>
@@ -40,15 +41,15 @@ void LibaioEngine::Open(const JobConfig& config) {
   direct_effective_ = open_result.direct_effective;
 
   if (!direct_effective_) {
-    Logger::get()->warn(
+    Logger::Get()->warn(
         "LibaioEngine: O_DIRECT not active -- kernel may execute IOs "
         "synchronously despite async submission");
   }
 
-  const int ret = io_setup(static_cast<unsigned>(config.iodepth), &ctx_);
+  const int ret = io_setup(config.iodepth, &ctx_);
   if (ret < 0) {
     if (::close(fd_) != 0) {
-      Logger::get()->warn("LibaioEngine::Open -- cleanup close failed: {}", std::strerror(errno));
+      Logger::Get()->warn("LibaioEngine::Open -- cleanup close failed: {}", ErrnoToString(errno));
     }
     fd_ = -1;
     ctx_ = nullptr;
@@ -74,7 +75,7 @@ void LibaioEngine::Open(const JobConfig& config) {
   events_.resize(depth);
   in_flight_.reserve(depth);
 
-  Logger::get()->debug("LibaioEngine: AIO context initialized, iodepth={}", iodepth_);
+  Logger::Get()->debug("LibaioEngine: AIO context initialized, iodepth={}", iodepth_);
 }
 
 void LibaioEngine::SubmitIO(const IORequest& request) {
@@ -100,13 +101,14 @@ void LibaioEngine::SubmitIO(const IORequest& request) {
     io_prep_pwrite(iocb_ptr, fd_, request.buffer, request.length, request.offset);
   }
 
+  // NOLINTNEXTLINE(performance-no-int-to-ptr)
   iocb_ptr->data = reinterpret_cast<void*>(static_cast<uintptr_t>(request.id));
 
   in_flight_.emplace(request.id,
                      SubmitInfo{request.submit_time, request.direction, request.length});
 
-  struct iocb* iocbs[1] = {iocb_ptr};
-  const int ret = io_submit(ctx_, 1, iocbs);
+  std::array<struct iocb*, 1> iocbs = {iocb_ptr};
+  const int ret = io_submit(ctx_, 1, iocbs.data());
 
   if (ret != 1) {
     in_flight_.erase(request.id);
@@ -141,6 +143,7 @@ void LibaioEngine::PollCompletions(int min_events, int max_events, std::vector<I
   out.reserve(out.size() + static_cast<size_t>(max_events));
 
   int nr = 0;
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-do-while)
   do {
     nr = io_getevents(ctx_, min_events, max_events, events_.data(), nullptr);
   } while (nr == -EINTR);
@@ -156,7 +159,7 @@ void LibaioEngine::PollCompletions(int min_events, int max_events, std::vector<I
 
     auto it = in_flight_.find(req_id);
     if (it == in_flight_.end()) {
-      Logger::get()->error("LibaioEngine::PollCompletions -- unexpected event for id {}", req_id);
+      Logger::Get()->error("LibaioEngine::PollCompletions -- unexpected event for id {}", req_id);
       free_iocbs_.push_back(events_[static_cast<size_t>(i)].obj);
       continue;
     }
@@ -167,7 +170,7 @@ void LibaioEngine::PollCompletions(int min_events, int max_events, std::vector<I
     completion.direction = info.direction;
     completion.submit_time = info.submit_time;
 
-    auto result = static_cast<long>(events_[static_cast<size_t>(i)].res);
+    auto result = static_cast<int64_t>(events_[static_cast<size_t>(i)].res);
 
     if (result < 0) {
       completion.bytes_transferred = 0;
@@ -179,9 +182,9 @@ void LibaioEngine::PollCompletions(int min_events, int max_events, std::vector<I
       completion.error_code = completion.success ? 0 : EIO;
     }
 
-    auto res2 = static_cast<long>(events_[static_cast<size_t>(i)].res2);
+    auto res2 = static_cast<int64_t>(events_[static_cast<size_t>(i)].res2);
     if (res2 != 0) {
-      Logger::get()->warn("LibaioEngine::PollCompletions -- res2={} for id {}", res2, req_id);
+      Logger::Get()->warn("LibaioEngine::PollCompletions -- res2={} for id {}", res2, req_id);
       completion.success = false;
       if (completion.error_code == 0) {
         completion.error_code = static_cast<int>(res2);
@@ -196,7 +199,7 @@ void LibaioEngine::PollCompletions(int min_events, int max_events, std::vector<I
 
 void LibaioEngine::Close() {
   if (ctx_ != nullptr && !in_flight_.empty()) {
-    Logger::get()->warn("LibaioEngine::Close -- draining {} pending in-flight IOs",
+    Logger::Get()->warn("LibaioEngine::Close -- draining {} pending in-flight IOs",
                         in_flight_.size());
 
     auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
@@ -210,7 +213,7 @@ void LibaioEngine::Close() {
       auto sec = std::chrono::duration_cast<std::chrono::seconds>(remaining);
       auto nsec = remaining - sec;
       struct timespec ts = {.tv_sec = static_cast<time_t>(sec.count()),
-                            .tv_nsec = static_cast<long>(nsec.count())};
+                            .tv_nsec = static_cast<decltype(timespec::tv_nsec)>(nsec.count())};
 
       const int nr = io_getevents(ctx_, 1, static_cast<int>(events_.size()), events_.data(), &ts);
 
@@ -221,7 +224,7 @@ void LibaioEngine::Close() {
         break;
       }
       if (nr < 0) {
-        Logger::get()->error("LibaioEngine::Close -- io_getevents drain error {}", -nr);
+        Logger::Get()->error("LibaioEngine::Close -- io_getevents drain error {}", -nr);
         break;
       }
 
@@ -233,7 +236,7 @@ void LibaioEngine::Close() {
     }
 
     if (!in_flight_.empty()) {
-      Logger::get()->error("LibaioEngine::Close -- {} IOs not drained, attempting io_cancel",
+      Logger::Get()->error("LibaioEngine::Close -- {} IOs not drained, attempting io_cancel",
                            in_flight_.size());
 
       for (auto& cb : iocb_pool_) {
@@ -242,7 +245,7 @@ void LibaioEngine::Close() {
           struct io_event cancel_event {};
           const int rc = io_cancel(ctx_, &cb, &cancel_event);
           if (rc < 0 && rc != -EINVAL) {
-            Logger::get()->warn("LibaioEngine::Close -- io_cancel id={} returned {}", id, -rc);
+            Logger::Get()->warn("LibaioEngine::Close -- io_cancel id={} returned {}", id, -rc);
           }
         }
       }
@@ -252,7 +255,7 @@ void LibaioEngine::Close() {
   if (ctx_ != nullptr) {
     const int ret = io_destroy(ctx_);
     if (ret < 0) {
-      Logger::get()->warn("LibaioEngine::Close -- io_destroy returned {}", -ret);
+      Logger::Get()->warn("LibaioEngine::Close -- io_destroy returned {}", -ret);
     }
     ctx_ = nullptr;
   }
@@ -261,7 +264,7 @@ void LibaioEngine::Close() {
     const int result = ::close(fd_);
     fd_ = -1;
     if (result == -1) {
-      Logger::get()->warn("LibaioEngine::Close -- close failed with errno {}", errno);
+      Logger::Get()->warn("LibaioEngine::Close -- close failed with errno {}", errno);
     }
   }
 

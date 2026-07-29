@@ -1,3 +1,6 @@
+/// @file main.cpp
+/// @brief Entry point. Parses CLI arguments and runs the benchmark.
+
 #include <cstdlib>
 #include <iostream>
 #include <vector>
@@ -14,6 +17,10 @@
 #include "logging/logger.h"
 #include "orchestrator/benchmark_orchestrator.h"
 
+/// @brief Program entry point.
+/// @param argc  Argument count.
+/// @param argv  Argument vector.
+/// @return EXIT_SUCCESS on a completed run, EXIT_FAILURE on setup errors.
 int main(int argc, char* argv[]) {
   cfio::CliOptions opts;
 
@@ -61,9 +68,9 @@ int main(int argc, char* argv[]) {
     opts.engine_override = engine_str;
   }
 
-  cfio::Logger::init("cfio.log", opts.verbose);
+  cfio::Logger::Init("cfio.log", opts.verbose);
 
-  auto log = cfio::Logger::get();
+  auto log = cfio::Logger::Get();
   log->info("config: {}", opts.config_path.string());
   log->info("runtime: {}s", opts.runtime_seconds);
   log->info("ui: {}", opts.ui_backend);
@@ -113,12 +120,12 @@ int main(int argc, char* argv[]) {
   } catch (const std::exception& e) {
     log->critical("fatal: {}", e.what());
     std::cerr << "C-FIO: error: " << e.what() << "\n";
-    cfio::Logger::shutdown();
+    cfio::Logger::Shutdown();
     return EXIT_FAILURE;
   }
 
   cfio::BenchmarkOrchestrator orchestrator(std::move(opts), std::move(jobs));
   const int rc = orchestrator.Run();
-  cfio::Logger::shutdown();
+  cfio::Logger::Shutdown();
   return rc;
 }
