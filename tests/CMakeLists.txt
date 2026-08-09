@@ -28,6 +28,7 @@ add_executable(cfio-tests
   test_terminal_display.cpp
   test_results_exporter.cpp
   test_run_mailbox.cpp
+  test_qt_display.cpp
 )
 
 target_link_libraries(cfio-tests

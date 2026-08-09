@@ -36,6 +36,7 @@ add_library(cfio-core STATIC
         display/metric_format.cpp
         display/terminal_display.cpp
         display/qt/run_mailbox.cpp
+        display/qt/qt_display.cpp
         reporting/results_exporter.cpp
 )
 
