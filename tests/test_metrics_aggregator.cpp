@@ -52,6 +52,8 @@ class MetricsAggregatorTestPeer {
 
   [[nodiscard]] const std::vector<std::uint64_t>& PrevIops() const { return agg_->prev_iops_; }
 
+  [[nodiscard]] bool SamplingThreadJoinable() const { return agg_->thread_.joinable(); }
+
  private:
   MetricsAggregator* agg_;
 };
@@ -384,6 +386,36 @@ TEST(MetricsAggregatorTest, StartStopLifecycleRecordsSeries) {
 
   EXPECT_EQ(aggregator.LatestSnapshot().jobs.size(), 1U);
   EXPECT_GE(aggregator.TimeSeries().size(), 1U);
+}
+
+TEST(MetricsAggregatorTest, FinalSnapshotJoinsSamplingThread) {
+  auto worker = MakeFrozenWorker("job", RWMode::kRead, 40);
+
+  MetricsAggregator aggregator({worker.get()}, 5);
+  const MetricsAggregatorTestPeer peer(aggregator);
+  const std::atomic<bool> g_running{true};
+  aggregator.Start(g_running);
+  std::this_thread::sleep_for(std::chrono::milliseconds(600));
+
+  aggregator.TakeFinalSnapshot();  // no explicit Stop, the call must join itself
+
+  EXPECT_FALSE(peer.SamplingThreadJoinable());
+  EXPECT_EQ(aggregator.LatestSnapshot().jobs.size(), 1U);
+}
+
+TEST(MetricsAggregatorTest, StopIsIdempotent) {
+  auto worker = MakeFrozenWorker("job", RWMode::kRead, 40);
+
+  MetricsAggregator aggregator({worker.get()}, 5);
+  const std::atomic<bool> g_running{true};
+  aggregator.Start(g_running);
+  aggregator.Stop();
+  const double first_elapsed = aggregator.BuildResults(CliOptions{}).elapsed_seconds;
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  aggregator.Stop();
+
+  EXPECT_DOUBLE_EQ(aggregator.BuildResults(CliOptions{}).elapsed_seconds, first_elapsed);
 }
 
 }  // namespace

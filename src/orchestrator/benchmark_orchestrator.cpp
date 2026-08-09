@@ -248,8 +248,8 @@ void BenchmarkOrchestrator::RunBenchmark(BenchmarkResults& results) {
     }
   }
 
-  aggregator_->TakeFinalSnapshot();
   aggregator_->Stop();
+  aggregator_->TakeFinalSnapshot();
 
   results = aggregator_->BuildResults(options_);
   results.interrupted = interrupted;

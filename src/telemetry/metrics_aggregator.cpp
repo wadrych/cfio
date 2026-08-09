@@ -80,12 +80,16 @@ void MetricsAggregator::Start(const std::atomic<bool>& g_running) {
 }
 
 void MetricsAggregator::Stop() {
+  if (stopped_) {
+    return;
+  }
   if (thread_.joinable()) {
     thread_.request_stop();
     sample_cv_.notify_all();
     thread_.join();
   }
   end_time_ = std::chrono::steady_clock::now();
+  stopped_ = true;
 }
 
 void MetricsAggregator::Run(const std::stop_token& stop, const std::atomic<bool>& g_running) {
@@ -181,6 +185,7 @@ void MetricsAggregator::RecordTimeSeries(const MetricsSnapshot& snapshot) {
 }
 
 void MetricsAggregator::TakeFinalSnapshot() {
+  Stop();  // join first, this thread then owns the diff basis alone
   MetricsSnapshot snapshot = TakeSnapshot(false);
   const std::lock_guard<std::mutex> lock(snapshot_mutex_);
   latest_snapshot_ = std::move(snapshot);

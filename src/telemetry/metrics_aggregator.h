@@ -66,7 +66,8 @@ class MetricsAggregator {
   /// @param g_running  Global run flag
   void Run(const std::stop_token& stop, const std::atomic<bool>& g_running);
 
-  /// @brief Read every worker and build one snapshot
+  /// @brief Read every worker and build one snapshot. Not thread safe, run it
+  ///        on the sampling thread or on any thread after Stop
   /// @param record_ts  When true, advance the diff basis to this sample
   /// @return The computed snapshot
   [[nodiscard]] MetricsSnapshot TakeSnapshot(bool record_ts);
@@ -97,6 +98,7 @@ class MetricsAggregator {
   std::mutex sample_mutex_;
 
   std::jthread thread_;  ///< Sampling thread
+  bool stopped_{false};  ///< True once Stop has joined the sampling thread
 };
 
 }  // namespace cfio
