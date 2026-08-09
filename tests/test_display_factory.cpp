@@ -2,14 +2,17 @@
 /// @brief Unit tests for IDisplay and DisplayFactory
 
 #include <cstddef>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
 #include <gtest/gtest.h>
 
+#include "display/display_context.h"
 #include "display/display_factory.h"
 #include "display/i_display.h"
+#include "display/terminal_display.h"
 #include "telemetry/benchmark_results.h"
 #include "telemetry/metrics_snapshot.h"
 
@@ -51,6 +54,33 @@ TEST(DisplayFactoryTest, QtBackendThrowsWhenNotCompiled) {
 
 TEST(DisplayFactoryTest, UnknownBackendThrows) {
   EXPECT_THROW(DisplayFactory::Create("bogus"), std::runtime_error);
+}
+
+TEST(DisplayFactoryTest, RegisteredBackendIsCreated) {
+  DisplayContext seen;
+  DisplayFactory::Register("fake", [&seen](const DisplayContext& context) {
+    seen = context;
+    return std::make_unique<FakeDisplay>();
+  });
+
+  DisplayContext context;
+  context.engine_label = "psync";
+  const auto display = DisplayFactory::Create("fake", context);
+
+  EXPECT_NE(dynamic_cast<const FakeDisplay*>(display.get()), nullptr);
+  EXPECT_EQ(seen.engine_label, "psync");
+}
+
+TEST(DisplayFactoryTest, RegistrationReplacesEarlierEntry) {
+  DisplayFactory::Register("replaceable", [](const DisplayContext&) {
+    return std::make_unique<TerminalDisplay>(DisplayContext{});
+  });
+  DisplayFactory::Register("replaceable",
+                           [](const DisplayContext&) { return std::make_unique<FakeDisplay>(); });
+
+  const auto display = DisplayFactory::Create("replaceable");
+
+  EXPECT_NE(dynamic_cast<const FakeDisplay*>(display.get()), nullptr);
 }
 
 TEST(DisplayTest, FakeDisplayRecordsLifecycle) {

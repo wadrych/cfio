@@ -3,17 +3,36 @@
 
 #include "display/display_factory.h"
 
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include "display/display_context.h"
 #include "display/terminal_display.h"
 
 namespace cfio {
+namespace {
+
+std::map<std::string, DisplayCreator>& Registry() {
+  static std::map<std::string, DisplayCreator> registry;
+  return registry;
+}
+
+}  // namespace
+
+void DisplayFactory::Register(std::string name, DisplayCreator creator) {
+  Registry()[std::move(name)] = std::move(creator);
+}
 
 std::unique_ptr<IDisplay> DisplayFactory::Create(const std::string& ui_backend,
                                                  const DisplayContext& context) {
+  const auto entry = Registry().find(ui_backend);
+  if (entry != Registry().end()) {
+    return entry->second(context);
+  }
+
   if (ui_backend == "terminal") {
     return std::make_unique<TerminalDisplay>(context);
   }
