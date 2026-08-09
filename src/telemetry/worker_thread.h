@@ -15,7 +15,7 @@
 #include "common/types.h"
 #include "config/job_config.h"
 #include "engine/i_engine_io.h"
-#include "telemetry/aligned_buffer.h"
+#include "telemetry/buffer_pool.h"
 #include "telemetry/io_direction_decider.h"
 #include "telemetry/log2_histogram.h"
 #include "telemetry/offset_generator.h"
@@ -130,7 +130,7 @@ class WorkerThread {
                         std::chrono::steady_clock::time_point now) noexcept;
 
   JobConfig config_;
-  AlignedBuffer io_buffer_;
+  BufferPool buffer_pool_;
   std::unique_ptr<IEngineIO> engine_;
   Log2Histogram<64, std::uint64_t> histogram_;
   std::atomic<std::uint64_t> iops_count_{0};
@@ -142,7 +142,6 @@ class WorkerThread {
   std::atomic<bool> failed_{false};
   std::string error_message_;
   bool direct_effective_ = false;
-  std::uint64_t next_request_id_ = 0;
   std::jthread thread_;
 };
 

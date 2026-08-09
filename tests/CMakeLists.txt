@@ -14,6 +14,7 @@ add_executable(cfio-tests
   test_config_validator.cpp
   test_config_parser.cpp
   test_aligned_buffer.cpp
+  test_buffer_pool.cpp
   test_engine_interface.cpp
   test_log2_histogram.cpp
   test_offset_generator.cpp

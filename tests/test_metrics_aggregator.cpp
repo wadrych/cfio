@@ -78,7 +78,7 @@ class CountingEngine : public IEngineIO {
     if (throw_on_submit_at != 0 && submit_calls_ == throw_on_submit_at) {
       throw std::system_error(EAGAIN, std::system_category(), "injected");
     }
-    pending_.push_back(Pending{request.submit_time, request.direction, request.length});
+    pending_.push_back(Pending{request.id, request.submit_time, request.direction, request.length});
   }
 
   void PollCompletions(int min_events, int max_events, std::vector<IOCompletion>& out) override {
@@ -97,6 +97,7 @@ class CountingEngine : public IEngineIO {
       ++completed_;
 
       IOCompletion completion{};
+      completion.id = info.id;
       completion.direction = info.direction;
       completion.submit_time = info.submit_time;
       if (fail_all) {
@@ -122,6 +123,7 @@ class CountingEngine : public IEngineIO {
 
  private:
   struct Pending {
+    std::uint64_t id;
     std::chrono::steady_clock::time_point submit_time;
     IODirection direction;
     std::size_t length;

@@ -4,6 +4,8 @@
 #include "telemetry/worker_thread.h"
 
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <string>
 #include <utility>
@@ -16,7 +18,8 @@ namespace cfio {
 
 WorkerThread::WorkerThread(JobConfig config, std::unique_ptr<IEngineIO> engine)
     : config_(std::move(config)),
-      io_buffer_(config_.alignment, config_.block_size),
+      buffer_pool_(config_.alignment, config_.block_size,
+                   static_cast<size_t>(config_.EffectiveIODepth())),
       engine_(std::move(engine)),
       offset_gen_(config_.access_pattern, config_.file_size, config_.block_size, config_.alignment),
       direction_decider_(config_.rw_mode, config_.rwmixread) {
@@ -24,6 +27,9 @@ WorkerThread::WorkerThread(JobConfig config, std::unique_ptr<IEngineIO> engine)
     Logger::Get()->warn("job '{}': engine '{}' is synchronous, iodepth {} is ignored", config_.name,
                         config_.engine, config_.iodepth);
   }
+
+  Logger::Get()->debug("job '{}': buffer pool {} slots, {} bytes", config_.name,
+                       buffer_pool_.Capacity(), buffer_pool_.TotalBytes());
 
   engine_->Open(config_);
   direct_effective_ = engine_->IsDirectEnabled();
@@ -135,16 +141,24 @@ void WorkerThread::RunAsyncLoop(const std::atomic<bool>& g_running) {
 void WorkerThread::SubmitOne() {
   IORequest request = GenerateNextIO();
   request.submit_time = std::chrono::steady_clock::now();
-  engine_->SubmitIO(request);
+
+  try {
+    engine_->SubmitIO(request);
+  } catch (...) {
+    buffer_pool_.Release(static_cast<std::uint32_t>(request.id));
+    throw;
+  }
 }
 
 IORequest WorkerThread::GenerateNextIO() noexcept {
+  const std::uint32_t slot = buffer_pool_.Acquire();
+
   IORequest request;
   request.offset = offset_gen_.Next();
-  request.buffer = io_buffer_.Data();
+  request.buffer = buffer_pool_.Data(slot);
   request.length = config_.block_size;
   request.direction = direction_decider_.Next();
-  request.id = next_request_id_++;
+  request.id = slot;
   return request;
 }
 
@@ -163,6 +177,8 @@ void WorkerThread::RecordCompletion(const IOCompletion& completion,
         completion.direction == IODirection::kRead ? read_error_count_ : write_error_count_;
     error_counter.fetch_add(1, std::memory_order_relaxed);
   }
+
+  buffer_pool_.Release(static_cast<std::uint32_t>(completion.id));
 }
 
 }  // namespace cfio

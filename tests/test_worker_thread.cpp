@@ -8,6 +8,7 @@
 #include <deque>
 #include <limits>
 #include <memory>
+#include <set>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -62,6 +63,8 @@ class FakeEngine : public IEngineIO {
   std::uint64_t submits_after_stop = 0;
   std::uint64_t submit_calls = 0;
   std::uint64_t poll_calls = 0;
+  bool duplicate_in_flight_buffer = false;  // two in-flight requests shared a buffer
+  std::set<const void*> distinct_buffers;   // every buffer pointer ever submitted
 
   void Open(const JobConfig& /*config*/) override {}
 
@@ -73,7 +76,15 @@ class FakeEngine : public IEngineIO {
     if (running != nullptr && !running->load(std::memory_order_relaxed)) {
       ++submits_after_stop;
     }
-    pending_.push_back(Pending{request.submit_time, request.direction, request.length});
+    for (const Pending& outstanding : pending_) {
+      if (outstanding.buffer == request.buffer) {
+        duplicate_in_flight_buffer = true;
+      }
+    }
+    distinct_buffers.insert(request.buffer);
+
+    pending_.push_back(Pending{request.id, request.buffer, request.submit_time, request.direction,
+                               request.length});
     ++in_flight;
     ++total_submitted;
     max_in_flight = std::max(max_in_flight, in_flight);
@@ -105,6 +116,7 @@ class FakeEngine : public IEngineIO {
       ++total_completed;
 
       IOCompletion completion{};
+      completion.id = info.id;
       completion.direction = info.direction;
       completion.submit_time = info.submit_time;
       if (fail_all) {
@@ -138,6 +150,8 @@ class FakeEngine : public IEngineIO {
   }
 
   struct Pending {
+    std::uint64_t id;
+    const void* buffer;
     std::chrono::steady_clock::time_point submit_time;
     IODirection direction;
     size_t length;
@@ -425,6 +439,73 @@ TEST(WorkerThreadTest, FailureStopsOtherWorkers) {
   EXPECT_FALSE(g_running.load(std::memory_order_relaxed));
   EXPECT_EQ(healthy_raw->in_flight, 0);
   EXPECT_EQ(healthy_raw->total_submitted, healthy_raw->total_completed);
+}
+
+TEST(WorkerThreadTest, ConcurrentRequestsUseDistinctBuffers) {
+  constexpr int kDepth = 8;
+  constexpr std::uint64_t kTarget = 200;
+  auto config = MakeConfig("io_uring", RWMode::kRandRW, kDepth);
+
+  auto fake = std::make_unique<FakeEngine>();
+  fake->completions_per_poll = 1;
+  fake->stop_after = kTarget;
+  FakeEngine* raw = fake.get();
+
+  std::atomic<bool> g_running{true};
+  fake->running = &g_running;
+  WorkerThread worker(config, std::move(fake));
+
+  std::barrier<> start_barrier{1};
+  worker.Start(start_barrier, g_running);
+  worker.Join();
+
+  EXPECT_FALSE(raw->duplicate_in_flight_buffer);
+  EXPECT_EQ(raw->max_in_flight, kDepth);
+  // Buffers are pooled and reused, so the pool never grows past iodepth.
+  EXPECT_EQ(raw->distinct_buffers.size(), static_cast<size_t>(kDepth));
+  EXPECT_GT(raw->total_submitted, static_cast<std::uint64_t>(kDepth));
+}
+
+TEST(WorkerThreadTest, SyncRunUsesOneBuffer) {
+  constexpr std::uint64_t kTarget = 25;
+  auto config = MakeConfig("psync", RWMode::kRead, 1);
+
+  auto fake = std::make_unique<FakeEngine>();
+  fake->stop_after = kTarget;
+  FakeEngine* raw = fake.get();
+
+  std::atomic<bool> g_running{true};
+  fake->running = &g_running;
+  WorkerThread worker(config, std::move(fake));
+
+  std::barrier<> start_barrier{1};
+  worker.Start(start_barrier, g_running);
+  worker.Join();
+
+  EXPECT_FALSE(raw->duplicate_in_flight_buffer);
+  EXPECT_EQ(raw->distinct_buffers.size(), 1U);
+}
+
+TEST(WorkerThreadTest, SubmitFailureReleasesSlot) {
+  constexpr int kDepth = 4;
+  auto config = MakeConfig("libaio", RWMode::kRandRead, kDepth);
+
+  auto fake = std::make_unique<FakeEngine>();
+  fake->completions_per_poll = kDepth;
+  fake->throw_on_submit_at = 3;
+  FakeEngine* raw = fake.get();
+
+  std::atomic<bool> g_running{true};
+  fake->running = &g_running;
+  WorkerThread worker(config, std::move(fake));
+
+  std::barrier<> start_barrier{1};
+  worker.Start(start_barrier, g_running);
+  worker.Join();
+
+  EXPECT_TRUE(worker.Failed());
+  EXPECT_FALSE(raw->duplicate_in_flight_buffer);
+  EXPECT_FALSE(g_running.load(std::memory_order_relaxed));
 }
 
 }  // namespace
