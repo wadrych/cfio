@@ -21,6 +21,7 @@
 #include "config/job_config.h"
 #include "config/size_parser.h"
 #include "display/display_context.h"
+#include "display/metric_format.h"
 #include "telemetry/benchmark_results.h"
 #include "telemetry/metrics_snapshot.h"
 
@@ -57,11 +58,6 @@ constexpr int kColLat = 16;
 constexpr int kRowWidth = 1 + kColJob + 3 + kColIops + 3 + kColBw + 3 + kColLat;
 
 constexpr int kBarWidth = 40;
-constexpr std::uint64_t kBytesPerKiB = 1024ULL;
-constexpr std::uint64_t kBytesPerMiB = 1024ULL * 1024ULL;
-constexpr std::uint64_t kBytesPerGiB = 1024ULL * 1024ULL * 1024ULL;
-constexpr std::uint64_t kNsPerUs = 1000ULL;
-constexpr int kSecPerMin = 60;
 
 // Repeat a multibyte glyph count times
 std::string RepeatGlyph(std::string_view glyph, int count) {
@@ -74,25 +70,6 @@ std::string RepeatGlyph(std::string_view glyph, int count) {
     out.append(glyph);
   }
   return out;
-}
-
-std::string FormatCount(std::uint64_t value) {
-  const std::string digits = std::to_string(value);
-  const std::size_t count = digits.size();
-  std::string out;
-  out.reserve(count + ((count - 1) / 3));
-  for (std::size_t i = 0; i < count; ++i) {
-    if (i != 0 && (count - i) % 3 == 0) {
-      out.push_back(',');
-    }
-    out.push_back(digits[i]);
-  }
-  return out;
-}
-
-std::string FormatDuration(int seconds) {
-  const int clamped = std::max(0, seconds);
-  return fmt::format("{:02}:{:02}", clamped / kSecPerMin, clamped % kSecPerMin);
 }
 
 std::string FormatProgressBar(int elapsed, int total, int width) {
@@ -128,20 +105,6 @@ std::string SeparatorRow() {
   return RepeatGlyph(kHoriz, kColJob + 2) + std::string(kCross) +
          RepeatGlyph(kHoriz, kColIops + 2) + std::string(kCross) + RepeatGlyph(kHoriz, kColBw + 2) +
          std::string(kCross) + RepeatGlyph(kHoriz, kColLat + 1);
-}
-
-std::string FormatBytes(std::uint64_t bytes) {
-  const auto value = static_cast<double>(bytes);
-  if (bytes >= kBytesPerGiB) {
-    return fmt::format("{:.1f} GiB", value / static_cast<double>(kBytesPerGiB));
-  }
-  if (bytes >= kBytesPerMiB) {
-    return fmt::format("{:.1f} MiB", value / static_cast<double>(kBytesPerMiB));
-  }
-  if (bytes >= kBytesPerKiB) {
-    return fmt::format("{:.1f} KiB", value / static_cast<double>(kBytesPerKiB));
-  }
-  return fmt::format("{} B", bytes);
 }
 
 std::string FormatJobConfig(const JobConfig& config) {

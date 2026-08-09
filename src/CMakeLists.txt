@@ -33,6 +33,7 @@ add_library(cfio-core STATIC
         orchestrator/file_preparator.cpp
         orchestrator/benchmark_orchestrator.cpp
         display/display_factory.cpp
+        display/metric_format.cpp
         display/terminal_display.cpp
         reporting/results_exporter.cpp
 )
