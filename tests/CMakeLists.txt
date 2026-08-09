@@ -27,6 +27,7 @@ add_executable(cfio-tests
   test_metric_format.cpp
   test_terminal_display.cpp
   test_results_exporter.cpp
+  test_run_mailbox.cpp
 )
 
 target_link_libraries(cfio-tests
