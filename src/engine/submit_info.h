@@ -12,8 +12,8 @@ namespace cfio {
 /// @brief Tracks submit time metadata for async IO requests.
 struct SubmitInfo {
   std::chrono::steady_clock::time_point submit_time;  ///< When the IO was submitted
-  IODirection direction;                              ///< Read or write
-  size_t length;                                      ///< Requested byte count
+  IODirection direction{};                            ///< Read or write
+  size_t length{};                                    ///< Requested byte count
 };
 
 }  // namespace cfio

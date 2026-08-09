@@ -38,7 +38,7 @@ class FilePreparator {
   /// @brief One tracked file
   struct CreatedFile {
     std::filesystem::path path;
-    bool pre_existed;
+    bool pre_existed{};
   };
 
   std::vector<CreatedFile> created_;
