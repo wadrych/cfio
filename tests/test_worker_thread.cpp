@@ -9,6 +9,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -49,16 +50,26 @@ class FakeEngine : public IEngineIO {
   bool direct_enabled = false;           // reported by IsDirectEnabled
   std::atomic<bool>* running = nullptr;  // shared run flag
 
+  std::uint64_t throw_on_submit_at = 0;  // throw from the Nth SubmitIO, 0 disables
+  std::uint64_t throw_on_poll_at = 0;    // throw from the Nth PollCompletions, 0 disables
+  bool throw_non_std = false;            // throw a non std exception instead
+
   int in_flight = 0;
   int max_in_flight = 0;
   int steady_min_in_flight = std::numeric_limits<int>::max();
   std::uint64_t total_submitted = 0;
   std::uint64_t total_completed = 0;
   std::uint64_t submits_after_stop = 0;
+  std::uint64_t submit_calls = 0;
+  std::uint64_t poll_calls = 0;
 
   void Open(const JobConfig& /*config*/) override {}
 
   void SubmitIO(const IORequest& request) override {
+    ++submit_calls;
+    if (throw_on_submit_at != 0 && submit_calls == throw_on_submit_at) {
+      ThrowInjected();
+    }
     if (running != nullptr && !running->load(std::memory_order_relaxed)) {
       ++submits_after_stop;
     }
@@ -69,6 +80,10 @@ class FakeEngine : public IEngineIO {
   }
 
   void PollCompletions(int min_events, int max_events, std::vector<IOCompletion>& out) override {
+    ++poll_calls;
+    if (throw_on_poll_at != 0 && poll_calls == throw_on_poll_at) {
+      ThrowInjected();
+    }
     if (pending_.empty()) {
       return;
     }
@@ -115,6 +130,13 @@ class FakeEngine : public IEngineIO {
   [[nodiscard]] bool IsDirectEnabled() const noexcept override { return direct_enabled; }
 
  private:
+  void ThrowInjected() const {
+    if (throw_non_std) {
+      throw 42;
+    }
+    throw std::system_error(EAGAIN, std::system_category(), "injected");
+  }
+
   struct Pending {
     std::chrono::steady_clock::time_point submit_time;
     IODirection direction;
@@ -290,6 +312,119 @@ TEST(WorkerThreadTest, DirectEffectiveReflectsEngineWhenDisabled) {
   worker.Join();
 
   EXPECT_FALSE(worker.DirectEffective());
+}
+
+TEST(WorkerThreadTest, SyncLoopSurvivesSubmitException) {
+  auto config = MakeConfig("psync", RWMode::kRead, 1);
+
+  auto fake = std::make_unique<FakeEngine>();
+  fake->throw_on_submit_at = 5;
+
+  std::atomic<bool> g_running{true};
+  fake->running = &g_running;
+  WorkerThread worker(config, std::move(fake));
+
+  std::barrier<> start_barrier{1};
+  worker.Start(start_barrier, g_running);
+  worker.Join();
+
+  EXPECT_TRUE(worker.Failed());
+  EXPECT_NE(worker.ErrorMessage().find("injected"), std::string::npos);
+  EXPECT_FALSE(g_running.load(std::memory_order_relaxed));
+  EXPECT_EQ(worker.IopsCount(), 4U);
+}
+
+TEST(WorkerThreadTest, AsyncLoopSurvivesPollException) {
+  constexpr int kDepth = 8;
+  auto config = MakeConfig("libaio", RWMode::kRandRead, kDepth);
+
+  auto fake = std::make_unique<FakeEngine>();
+  fake->completions_per_poll = 1;
+  fake->throw_on_poll_at = 3;
+
+  std::atomic<bool> g_running{true};
+  fake->running = &g_running;
+  WorkerThread worker(config, std::move(fake));
+
+  std::barrier<> start_barrier{1};
+  worker.Start(start_barrier, g_running);
+  worker.Join();
+
+  EXPECT_TRUE(worker.Failed());
+  EXPECT_NE(worker.ErrorMessage().find("injected"), std::string::npos);
+  EXPECT_FALSE(g_running.load(std::memory_order_relaxed));
+  EXPECT_EQ(worker.IopsCount(), 2U);
+}
+
+TEST(WorkerThreadTest, NonStdExceptionRecorded) {
+  auto config = MakeConfig("psync", RWMode::kRead, 1);
+
+  auto fake = std::make_unique<FakeEngine>();
+  fake->throw_on_submit_at = 1;
+  fake->throw_non_std = true;
+
+  std::atomic<bool> g_running{true};
+  fake->running = &g_running;
+  WorkerThread worker(config, std::move(fake));
+
+  std::barrier<> start_barrier{1};
+  worker.Start(start_barrier, g_running);
+  worker.Join();
+
+  EXPECT_TRUE(worker.Failed());
+  EXPECT_EQ(worker.ErrorMessage(), "unknown exception");
+}
+
+TEST(WorkerThreadTest, HealthyRunReportsNoFailure) {
+  constexpr std::uint64_t kTarget = 20;
+  auto config = MakeConfig("psync", RWMode::kRead, 1);
+
+  auto fake = std::make_unique<FakeEngine>();
+  fake->stop_after = kTarget;
+
+  std::atomic<bool> g_running{true};
+  fake->running = &g_running;
+  WorkerThread worker(config, std::move(fake));
+
+  std::barrier<> start_barrier{1};
+  worker.Start(start_barrier, g_running);
+  worker.Join();
+
+  EXPECT_FALSE(worker.Failed());
+  EXPECT_TRUE(worker.ErrorMessage().empty());
+}
+
+TEST(WorkerThreadTest, FailureStopsOtherWorkers) {
+  auto failing_config = MakeConfig("psync", RWMode::kRead, 1);
+  failing_config.name = "failing";
+  auto healthy_config = MakeConfig("libaio", RWMode::kRandRead, 4);
+  healthy_config.name = "healthy";
+
+  std::atomic<bool> g_running{true};
+
+  auto failing_engine = std::make_unique<FakeEngine>();
+  failing_engine->throw_on_submit_at = 10;
+  failing_engine->running = &g_running;
+
+  auto healthy_engine = std::make_unique<FakeEngine>();
+  healthy_engine->completions_per_poll = 4;
+  healthy_engine->running = &g_running;
+  FakeEngine* healthy_raw = healthy_engine.get();
+
+  WorkerThread failing(failing_config, std::move(failing_engine));
+  WorkerThread healthy(healthy_config, std::move(healthy_engine));
+
+  std::barrier<> start_barrier{2};
+  failing.Start(start_barrier, g_running);
+  healthy.Start(start_barrier, g_running);
+  failing.Join();
+  healthy.Join();
+
+  EXPECT_TRUE(failing.Failed());
+  EXPECT_FALSE(healthy.Failed());
+  EXPECT_FALSE(g_running.load(std::memory_order_relaxed));
+  EXPECT_EQ(healthy_raw->in_flight, 0);
+  EXPECT_EQ(healthy_raw->total_submitted, healthy_raw->total_completed);
 }
 
 }  // namespace

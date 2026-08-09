@@ -152,7 +152,7 @@ int BenchmarkOrchestrator::Run() {
     CleanupFiles();
 
     log->info("benchmark complete, results in '{}'", output_dir_.string());
-    return EXIT_SUCCESS;
+    return any_worker_failed_ ? EXIT_FAILURE : EXIT_SUCCESS;
   } catch (const std::exception& e) {
     std::cerr << "C-FIO: error: " << e.what() << "\n";
     if (logging_ready_) {
@@ -239,6 +239,13 @@ void BenchmarkOrchestrator::RunBenchmark(BenchmarkResults& results) {
 
   for (const std::unique_ptr<WorkerThread>& worker : workers_) {
     worker->Join();
+  }
+
+  for (const std::unique_ptr<WorkerThread>& worker : workers_) {
+    if (worker->Failed()) {
+      any_worker_failed_ = true;
+      log->error("job '{}' aborted: {}", worker->Config().name, worker->ErrorMessage());
+    }
   }
 
   aggregator_->TakeFinalSnapshot();

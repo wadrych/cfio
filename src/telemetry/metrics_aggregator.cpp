@@ -245,6 +245,8 @@ BenchmarkResults MetricsAggregator::BuildResults(const CliOptions& opts) const {
     job.read_errors = worker->ReadErrorCount();
     job.write_errors = worker->WriteErrorCount();
     job.direct_effective = worker->DirectEffective();
+    job.failed = worker->Failed();
+    job.error_message = worker->ErrorMessage();
     results.jobs.push_back(std::move(job));
   }
 

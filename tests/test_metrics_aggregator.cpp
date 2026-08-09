@@ -11,6 +11,7 @@
 #include <deque>
 #include <memory>
 #include <string>
+#include <system_error>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -66,10 +67,15 @@ class CountingEngine : public IEngineIO {
   bool fail_all = false;
   bool direct_enabled = false;
   std::atomic<bool>* running = nullptr;
+  std::uint64_t throw_on_submit_at = 0;  // throw from the Nth SubmitIO, 0 disables
 
   void Open(const JobConfig& /*config*/) override {}
 
   void SubmitIO(const IORequest& request) override {
+    ++submit_calls_;
+    if (throw_on_submit_at != 0 && submit_calls_ == throw_on_submit_at) {
+      throw std::system_error(EAGAIN, std::system_category(), "injected");
+    }
     pending_.push_back(Pending{request.submit_time, request.direction, request.length});
   }
 
@@ -121,6 +127,7 @@ class CountingEngine : public IEngineIO {
 
   std::deque<Pending> pending_;
   std::uint64_t completed_ = 0;
+  std::uint64_t submit_calls_ = 0;
 };
 
 // Job for sync worker
@@ -152,6 +159,21 @@ std::unique_ptr<WorkerThread> MakeFrozenWorker(const std::string& name, RWMode r
 
   auto worker =
       std::make_unique<WorkerThread>(MakeConfig(name, rw_mode, direct), std::move(engine));
+  std::barrier<> start_barrier{1};
+  worker->Start(start_barrier, running);
+  worker->Join();
+  return worker;
+}
+
+std::unique_ptr<WorkerThread> MakeFailedWorker(const std::string& name, std::uint64_t throw_at) {
+  auto engine = std::make_unique<CountingEngine>();
+  engine->throw_on_submit_at = throw_at;
+
+  std::atomic<bool> running{true};
+  engine->running = &running;
+
+  auto worker =
+      std::make_unique<WorkerThread>(MakeConfig(name, RWMode::kRead, false), std::move(engine));
   std::barrier<> start_barrier{1};
   worker->Start(start_barrier, running);
   worker->Join();
@@ -242,6 +264,25 @@ TEST(MetricsAggregatorTest, TimeSeriesBeforeWrap) {
   ASSERT_EQ(series.size(), 2U);
   EXPECT_EQ(series[0].aggregate.iops_cumulative, 1U);
   EXPECT_EQ(series[1].aggregate.iops_cumulative, 2U);
+}
+
+TEST(MetricsAggregatorTest, BuildResultsCarriesWorkerFailure) {
+  constexpr std::uint64_t kThrowAt = 4;
+  auto failed = MakeFailedWorker("failed", kThrowAt);
+  auto healthy = MakeFrozenWorker("healthy", RWMode::kRead, 10);
+
+  MetricsAggregator aggregator({failed.get(), healthy.get()}, 5);
+  MetricsAggregatorTestPeer peer(aggregator);
+  const auto now = std::chrono::steady_clock::now();
+  peer.SetClocks(now - std::chrono::seconds(1), now - std::chrono::seconds(1));
+
+  const BenchmarkResults results = aggregator.BuildResults(CliOptions{});
+
+  ASSERT_EQ(results.jobs.size(), 2U);
+  EXPECT_TRUE(results.jobs[0].failed);
+  EXPECT_NE(results.jobs[0].error_message.find("injected"), std::string::npos);
+  EXPECT_FALSE(results.jobs[1].failed);
+  EXPECT_TRUE(results.jobs[1].error_message.empty());
 }
 
 TEST(MetricsAggregatorTest, BuildResultsCarriesWorkerTotals) {

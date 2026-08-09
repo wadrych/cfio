@@ -36,7 +36,7 @@ class BenchmarkOrchestrator {
   ~BenchmarkOrchestrator() = default;
 
   /// @brief Run the whole benchmark.
-  /// @return EXIT_SUCCESS on success, EXIT_FAILURE on setup failure
+  /// @return EXIT_SUCCESS on success, EXIT_FAILURE on setup failure or worker failure
   int Run();
 
  private:
@@ -75,6 +75,7 @@ class BenchmarkOrchestrator {
   std::unique_ptr<IDisplay> display_;
   std::atomic<bool> g_running_{true};
   bool logging_ready_ = false;
+  bool any_worker_failed_ = false;
 };
 
 }  // namespace cfio

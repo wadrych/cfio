@@ -225,6 +225,31 @@ TEST_F(ResultsExporterTest, DirectEffectiveIsSerialized) {
   EXPECT_FALSE(jobs.at(1).at("results").at("direct_effective"));
 }
 
+TEST_F(ResultsExporterTest, FailedJobSerializesErrorMessage) {
+  BenchmarkResults results;
+  JobResults job = MakeJobResults("crashed", RWMode::kRead, 0, 0, true);
+  job.failed = true;
+  job.error_message = "io_getevents failed: Resource temporarily unavailable";
+  results.jobs.push_back(std::move(job));
+
+  ResultsExporter::ExportJson(results, temp_dir_);
+
+  const nlohmann::json job_json = ReadSummary().at("jobs").at(0).at("results");
+  EXPECT_TRUE(job_json.at("failed"));
+  EXPECT_EQ(job_json.at("error"), "io_getevents failed: Resource temporarily unavailable");
+}
+
+TEST_F(ResultsExporterTest, HealthyJobSerializesNullError) {
+  BenchmarkResults results;
+  results.jobs.push_back(MakeJobResults("healthy", RWMode::kRead, 0, 0, true));
+
+  ResultsExporter::ExportJson(results, temp_dir_);
+
+  const nlohmann::json job_json = ReadSummary().at("jobs").at(0).at("results");
+  EXPECT_FALSE(job_json.at("failed"));
+  EXPECT_TRUE(job_json.at("error").is_null());
+}
+
 TEST_F(ResultsExporterTest, SerializesMultipleJobs) {
   BenchmarkResults results;
   results.jobs.push_back(MakeJobResults("rand-read-4k", RWMode::kRandRead, 0, 0, true));

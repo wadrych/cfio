@@ -198,6 +198,22 @@ TEST(TerminalDisplayTest, RenderSummaryMarksInterruptedRun) {
   EXPECT_NE(frame.find("Runtime 00:04 of 01:00"), std::string::npos);
 }
 
+TEST(TerminalDisplayTest, RenderSummaryMarksFailedJob) {
+  std::ostringstream sink;
+  const TerminalDisplay display(SampleContext(), sink);
+
+  BenchmarkResults results = SampleResults();
+  results.interrupted = true;
+  results.jobs.front().failed = true;
+  results.jobs.front().error_message = "io_submit failed";
+
+  const std::string frame = display.RenderSummary(results);
+
+  EXPECT_NE(frame.find("Complete (aborted: job failure)"), std::string::npos);
+  EXPECT_NE(frame.find("FAILED: io_submit failed"), std::string::npos);
+  EXPECT_EQ(frame.find("(interrupted)"), std::string::npos);
+}
+
 TEST(TerminalDisplayTest, RenderSummaryTruncatesElapsedOverrun) {
   std::ostringstream sink;
   const TerminalDisplay display(SampleContext(), sink);

@@ -9,6 +9,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <thread>
 
 #include "common/types.h"
@@ -41,7 +42,7 @@ class WorkerThread {
   ///
   /// @param start_barrier  Shared barrier
   /// @param g_running      Global run flag
-  void Start(std::barrier<>& start_barrier, const std::atomic<bool>& g_running);
+  void Start(std::barrier<>& start_barrier, std::atomic<bool>& g_running);
 
   /// @brief Wait for the worker thread to finish.
   void Join();
@@ -84,11 +85,19 @@ class WorkerThread {
   /// @return True if the file was opened with O_DIRECT
   [[nodiscard]] bool DirectEffective() const noexcept { return direct_effective_; }
 
+  /// @brief Check if the worker stopped on an engine error
+  /// @return True if the IO loop threw
+  [[nodiscard]] bool Failed() const noexcept { return failed_.load(std::memory_order_acquire); }
+
+  /// @brief Get the failure description
+  /// @return Error text, empty when Failed() is false
+  [[nodiscard]] const std::string& ErrorMessage() const noexcept;
+
  private:
   /// @brief Thread entry point. Waits at the barrier, then run the IO loop.
   /// @param start_barrier  Barrier for synchronized start
   /// @param g_running      Global run flag
-  void Run(std::barrier<>& start_barrier, const std::atomic<bool>& g_running);
+  void Run(std::barrier<>& start_barrier, std::atomic<bool>& g_running);
 
   /// @brief IO loop for iodepth 1 (sync/psync engines).
   ///
@@ -99,6 +108,11 @@ class WorkerThread {
   ///
   /// @param g_running  Global run flag
   void RunAsyncLoop(const std::atomic<bool>& g_running);
+
+  /// @brief Record a fatal worker error and stop the run
+  /// @param what       Failure description
+  /// @param g_running  Global run flag, cleared so other workers drain and exit
+  void RecordFailure(const char* what, std::atomic<bool>& g_running) noexcept;
 
   /// @brief Build the next IO request, stamp submit time, and submit it.
   void SubmitOne();
@@ -116,6 +130,7 @@ class WorkerThread {
                         std::chrono::steady_clock::time_point now) noexcept;
 
   JobConfig config_;
+  AlignedBuffer io_buffer_;
   std::unique_ptr<IEngineIO> engine_;
   Log2Histogram<64, std::uint64_t> histogram_;
   std::atomic<std::uint64_t> iops_count_{0};
@@ -124,7 +139,8 @@ class WorkerThread {
   std::atomic<std::uint64_t> write_error_count_{0};
   OffsetGenerator offset_gen_;
   IODirectionDecider direction_decider_;
-  AlignedBuffer io_buffer_;
+  std::atomic<bool> failed_{false};
+  std::string error_message_;
   bool direct_effective_ = false;
   std::uint64_t next_request_id_ = 0;
   std::jthread thread_;

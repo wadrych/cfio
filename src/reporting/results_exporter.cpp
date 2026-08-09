@@ -57,6 +57,12 @@ nlohmann::ordered_json JobResultsToJson(const JobResults& results) {
   out["total_ios"] = results.total_ios;
   out["total_bytes"] = results.total_bytes;
   out["direct_effective"] = results.direct_effective;
+  out["failed"] = results.failed;
+  if (results.error_message.empty()) {
+    out["error"] = nullptr;
+  } else {
+    out["error"] = results.error_message;
+  }
   out["errors"] = std::move(errors);
   return out;
 }

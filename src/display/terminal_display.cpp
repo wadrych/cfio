@@ -149,6 +149,10 @@ std::string FormatJobConfig(const JobConfig& config) {
                      SizeParser::Format(config.block_size), config.iodepth);
 }
 
+bool AnyJobFailed(const BenchmarkResults& results) {
+  return std::ranges::any_of(results.jobs, [](const JobResults& job) { return job.failed; });
+}
+
 }  // namespace
 
 TerminalDisplay::TerminalDisplay(DisplayContext context)
@@ -252,8 +256,13 @@ std::string TerminalDisplay::RenderSummary(const BenchmarkResults& results) cons
                                                 FormatDuration(results.runtime_seconds))
                                   : FormatDuration(elapsed);
 
-  add_line(fmt::format("C-FIO Benchmark {} Complete{}", kDash,
-                       results.interrupted ? " (interrupted)" : ""));
+  const char* stop_label = "";
+  if (AnyJobFailed(results)) {
+    stop_label = " (aborted: job failure)";
+  } else if (results.interrupted) {
+    stop_label = " (interrupted)";
+  }
+  add_line(fmt::format("C-FIO Benchmark {} Complete{}", kDash, stop_label));
   add_line(fmt::format(" Runtime {}   Engine {}   Direct {}", runtime, context_.engine_label,
                        context_.direct_label));
   add_line(RepeatGlyph(kDouble, kRowWidth));
@@ -280,6 +289,10 @@ std::string TerminalDisplay::RenderSummary(const BenchmarkResults& results) cons
                     FormatCount(job.lat_min_ns / kNsPerUs), FormatCount(job.lat_p50_ns / kNsPerUs),
                     FormatCount(job.lat_p95_ns / kNsPerUs), FormatCount(job.lat_p99_ns / kNsPerUs),
                     FormatCount(job.lat_max_ns / kNsPerUs), job.read_errors, job.write_errors));
+
+    if (job.failed) {
+      add_line(fmt::format("   FAILED: {}", job.error_message));
+    }
 
     total_iops += job.iops_avg;
     total_bw += job.bw_avg_bytes;

@@ -4,6 +4,8 @@
 #include "telemetry/worker_thread.h"
 
 #include <chrono>
+#include <exception>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -14,10 +16,10 @@ namespace cfio {
 
 WorkerThread::WorkerThread(JobConfig config, std::unique_ptr<IEngineIO> engine)
     : config_(std::move(config)),
+      io_buffer_(config_.alignment, config_.block_size),
       engine_(std::move(engine)),
       offset_gen_(config_.access_pattern, config_.file_size, config_.block_size, config_.alignment),
-      direction_decider_(config_.rw_mode, config_.rwmixread),
-      io_buffer_(config_.alignment, config_.block_size) {
+      direction_decider_(config_.rw_mode, config_.rwmixread) {
   if (config_.iodepth > 1 && EngineFactory::IsSynchronousEngine(config_.engine)) {
     Logger::Get()->warn("job '{}': engine '{}' is synchronous, iodepth {} is ignored", config_.name,
                         config_.engine, config_.iodepth);
@@ -27,7 +29,7 @@ WorkerThread::WorkerThread(JobConfig config, std::unique_ptr<IEngineIO> engine)
   direct_effective_ = engine_->IsDirectEnabled();
 }
 
-void WorkerThread::Start(std::barrier<>& start_barrier, const std::atomic<bool>& g_running) {
+void WorkerThread::Start(std::barrier<>& start_barrier, std::atomic<bool>& g_running) {
   thread_ = std::jthread([this, &start_barrier, &g_running]() { Run(start_barrier, g_running); });
 }
 
@@ -37,18 +39,48 @@ void WorkerThread::Join() {
   }
 }
 
-void WorkerThread::Run(std::barrier<>& start_barrier, const std::atomic<bool>& g_running) {
-  start_barrier.arrive_and_wait();
+void WorkerThread::Run(std::barrier<>& start_barrier, std::atomic<bool>& g_running) {
+  try {
+    start_barrier.arrive_and_wait();
 
-  const int effective_iodepth = config_.EffectiveIODepth();
-  Logger::Get()->debug("worker '{}' started, effective iodepth {}", config_.name,
-                       effective_iodepth);
+    const int effective_iodepth = config_.EffectiveIODepth();
+    Logger::Get()->debug("worker '{}' started, effective iodepth {}", config_.name,
+                         effective_iodepth);
 
-  if (effective_iodepth == 1) {
-    RunSyncLoop(g_running);
-  } else {
-    RunAsyncLoop(g_running);
+    if (effective_iodepth == 1) {
+      RunSyncLoop(g_running);
+    } else {
+      RunAsyncLoop(g_running);
+    }
+  } catch (const std::exception& e) {
+    RecordFailure(e.what(), g_running);
+  } catch (...) {
+    RecordFailure("unknown exception", g_running);
   }
+}
+
+void WorkerThread::RecordFailure(const char* what, std::atomic<bool>& g_running) noexcept {
+  try {
+    error_message_ = what;
+  } catch (...) {
+    error_message_.clear();
+  }
+  failed_.store(true, std::memory_order_release);
+  g_running.store(false, std::memory_order_relaxed);
+
+  try {
+    Logger::Get()->error("worker '{}' failed: {}", config_.name, what);
+    // NOLINTNEXTLINE(bugprone-empty-catch)
+  } catch (...) {
+  }
+}
+
+const std::string& WorkerThread::ErrorMessage() const noexcept {
+  static const std::string kEmpty;
+  if (!failed_.load(std::memory_order_acquire)) {
+    return kEmpty;
+  }
+  return error_message_;
 }
 
 void WorkerThread::RunSyncLoop(const std::atomic<bool>& g_running) {
