@@ -91,6 +91,34 @@ class DisplayScope {
   IDisplay* display_;
 };
 
+/// @brief Longest uninterrupted sleep, bounds stop reaction time.
+constexpr auto kSleepSlice = std::chrono::milliseconds(100);
+
+/// @brief Check whether the run must end now.
+/// @param running  Run flag cleared by the signal handler
+/// @param display  Display backend polled for a stop request
+/// @return true when a signal or the UI asked to stop
+bool ShouldStop(const std::atomic<bool>& running, const IDisplay& display) {
+  return !running.load(std::memory_order_relaxed) || display.StopRequested();
+}
+
+/// @brief Sleep up to the given time in short slices, returning early on a stop.
+/// @param until    Wake up time
+/// @param running  Run flag cleared by the signal handler
+/// @param display  Display backend polled for a stop request
+void SleepSliced(std::chrono::steady_clock::time_point until, const std::atomic<bool>& running,
+                 const IDisplay& display) {
+  auto now = std::chrono::steady_clock::now();
+  while (now < until) {
+    if (ShouldStop(running, display)) {
+      return;
+    }
+    std::this_thread::sleep_for(
+        std::min<std::chrono::steady_clock::duration>(kSleepSlice, until - now));
+    now = std::chrono::steady_clock::now();
+  }
+}
+
 /// @brief Local time for output directory names.
 std::string LocalTimestamp() {
   const std::time_t now = std::time(nullptr);
@@ -224,16 +252,15 @@ void BenchmarkOrchestrator::RunBenchmark(BenchmarkResults& results) {
   const auto deadline =
       std::chrono::steady_clock::now() + std::chrono::seconds(options_.runtime_seconds);
   auto next_tick = std::chrono::steady_clock::now() + std::chrono::seconds(1);
-  while (g_running_.load(std::memory_order_relaxed) &&
-         std::chrono::steady_clock::now() < deadline) {
-    std::this_thread::sleep_until(std::min(next_tick, deadline));
-    if (!g_running_.load(std::memory_order_relaxed)) {
-      break;  // interrupted by signal
+  while (!ShouldStop(g_running_, *display_) && std::chrono::steady_clock::now() < deadline) {
+    SleepSliced(std::min(next_tick, deadline), g_running_, *display_);
+    if (ShouldStop(g_running_, *display_)) {
+      break;  // interrupted by signal or by the display
     }
     display_->Update(aggregator_->LatestSnapshot());
     next_tick += std::chrono::seconds(1);
   }
-  const bool interrupted = !g_running_.load(std::memory_order_relaxed);
+  const bool interrupted = ShouldStop(g_running_, *display_);
   g_running_.store(false, std::memory_order_relaxed);
   log->info("run {}, stopping workers", interrupted ? "interrupted" : "finished");
 

@@ -34,6 +34,10 @@ class IDisplay {
 
   /// @brief Release resources and restore terminal state.
   virtual void Shutdown() = 0;
+
+  /// @brief Tell the orchestrator whether the user asked to stop the run
+  /// @return true when the backend requests an early stop
+  [[nodiscard]] virtual bool StopRequested() const { return false; }
 };
 
 }  // namespace cfio

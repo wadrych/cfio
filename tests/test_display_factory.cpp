@@ -72,5 +72,10 @@ TEST(DisplayTest, FakeDisplayRecordsLifecycle) {
   EXPECT_EQ(display.summary_runtime, 30);
 }
 
+TEST(DisplayTest, StopRequestedDefaultsToFalse) {
+  const FakeDisplay display;
+  EXPECT_FALSE(display.StopRequested());
+}
+
 }  // namespace
 }  // namespace cfio
