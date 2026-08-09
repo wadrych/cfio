@@ -212,6 +212,19 @@ TEST_F(ResultsExporterTest, ErrorsAreSplitReadWrite) {
   EXPECT_EQ(errors.at("write"), 7);
 }
 
+TEST_F(ResultsExporterTest, DirectEffectiveIsSerialized) {
+  BenchmarkResults results;
+  results.jobs.push_back(MakeJobResults("direct", RWMode::kRead, 0, 0, true));
+  results.jobs.push_back(MakeJobResults("buffered", RWMode::kRead, 0, 0, false));
+
+  ResultsExporter::ExportJson(results, temp_dir_);
+
+  const nlohmann::json jobs = ReadSummary().at("jobs");
+  ASSERT_EQ(jobs.size(), 2U);
+  EXPECT_TRUE(jobs.at(0).at("results").at("direct_effective"));
+  EXPECT_FALSE(jobs.at(1).at("results").at("direct_effective"));
+}
+
 TEST_F(ResultsExporterTest, SerializesMultipleJobs) {
   BenchmarkResults results;
   results.jobs.push_back(MakeJobResults("rand-read-4k", RWMode::kRandRead, 0, 0, true));

@@ -131,7 +131,7 @@ mix,psync,randrw,4k,1m,1,false,70,/tmp/cfio-mix.dat,4k
 
 Random access is derived from `rw`, so `randread`, `randwrite` and `randrw` are random and the
 rest are sequential. If the target does not support O_DIRECT, C-FIO falls back to buffered IO and
-the header of the live view reports the state it actually got.
+records the state it actually got as `direct_effective` for that job.
 
 ## Output
 
@@ -156,7 +156,7 @@ Three files are written to the output directory:
 
 | File | Content |
 |---|---|
-| `summary.json` | Final per job totals, latency percentiles, split read and write errors |
+| `summary.json` | Final per job totals, latency percentiles, effective O_DIRECT state, split read and write errors |
 | `timeseries.csv` | One row per second per job, for plotting |
 | `cfio.log` | Run log, INFO by default, DEBUG with `--verbose` |
 

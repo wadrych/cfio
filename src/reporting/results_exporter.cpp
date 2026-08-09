@@ -56,6 +56,7 @@ nlohmann::ordered_json JobResultsToJson(const JobResults& results) {
   out["lat_p99_ns"] = results.lat_p99_ns;
   out["total_ios"] = results.total_ios;
   out["total_bytes"] = results.total_bytes;
+  out["direct_effective"] = results.direct_effective;
   out["errors"] = std::move(errors);
   return out;
 }
