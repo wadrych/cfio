@@ -44,7 +44,7 @@ SortUsingDeclarations: Lexicographic
 SortIncludes: CaseSensitive
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^<(Q[A-Z]|Qt[A-Z])'
+  - Regex: '^<(Q[A-Z]|Qt[A-Z]|Qt>)'
     Priority: 4
     CaseSensitive: true
   # C++ standard library (no extension, lowercase only)

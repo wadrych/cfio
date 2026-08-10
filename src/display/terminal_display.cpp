@@ -46,7 +46,6 @@ constexpr std::string_view kDouble = "═";    // heavy horizontal rule
 constexpr std::string_view kBarFull = "█";   // progress filled cell
 constexpr std::string_view kBarEmpty = "░";  // progress empty cell
 constexpr std::string_view kDash = "—";      // header em dash
-constexpr std::string_view kMicro = "μ";     // micro sign for latency
 
 // Column content widths
 constexpr int kColJob = 16;
@@ -88,11 +87,11 @@ std::string FormatIopsCell(std::uint64_t instant, std::uint64_t average) {
 }
 
 std::string FormatBwCell(std::uint64_t instant, std::uint64_t average) {
-  return fmt::format("{}/{} MB/s", instant / kBytesPerMiB, average / kBytesPerMiB);
+  return fmt::format("{}/{} MB/s", RateMiB(instant), RateMiB(average));
 }
 
 std::string FormatLatCell(std::uint64_t p50, std::uint64_t p95, std::uint64_t p99) {
-  return fmt::format("{}/{}/{} {}s", p50 / kNsPerUs, p95 / kNsPerUs, p99 / kNsPerUs, kMicro);
+  return fmt::format("{}/{}/{} {}s", LatencyUs(p50), LatencyUs(p95), LatencyUs(p99), kMicroSign);
 }
 
 std::string DataRow(std::string_view job, std::string_view iops, std::string_view bw,
@@ -245,13 +244,13 @@ std::string TerminalDisplay::RenderSummary(const BenchmarkResults& results) cons
 
     add_line(fmt::format(" {}    {}", job.name, FormatJobConfig(job.config)));
     add_line(fmt::format("   IOPS {}   BW {} MB/s   IO {} ({} ops)", FormatCount(job.iops_avg),
-                         job.bw_avg_bytes / kBytesPerMiB, FormatBytes(job.total_bytes),
+                         RateMiB(job.bw_avg_bytes), FormatBytes(job.total_bytes),
                          FormatCount(job.total_ios)));
     add_line(
-        fmt::format("   Lat {}s  min {} p50 {} p95 {} p99 {} max {}   Err R:{} W:{}", kMicro,
-                    FormatCount(job.lat_min_ns / kNsPerUs), FormatCount(job.lat_p50_ns / kNsPerUs),
-                    FormatCount(job.lat_p95_ns / kNsPerUs), FormatCount(job.lat_p99_ns / kNsPerUs),
-                    FormatCount(job.lat_max_ns / kNsPerUs), job.read_errors, job.write_errors));
+        fmt::format("   Lat {}s  min {} p50 {} p95 {} p99 {} max {}   Err R:{} W:{}", kMicroSign,
+                    FormatCount(LatencyUs(job.lat_min_ns)), FormatCount(LatencyUs(job.lat_p50_ns)),
+                    FormatCount(LatencyUs(job.lat_p95_ns)), FormatCount(LatencyUs(job.lat_p99_ns)),
+                    FormatCount(LatencyUs(job.lat_max_ns)), job.read_errors, job.write_errors));
 
     if (job.failed) {
       add_line(fmt::format("   FAILED: {}", job.error_message));
@@ -266,7 +265,7 @@ std::string TerminalDisplay::RenderSummary(const BenchmarkResults& results) cons
 
   add_line(RepeatGlyph(kDouble, kRowWidth));
   add_line(fmt::format(" TOTAL   IOPS {}   BW {} MB/s   IO {}   Err R:{} W:{}",
-                       FormatCount(total_iops), total_bw / kBytesPerMiB, FormatBytes(total_bytes),
+                       FormatCount(total_iops), RateMiB(total_bw), FormatBytes(total_bytes),
                        total_read_errors, total_write_errors));
   add_line(fmt::format(" Log: {}", context_.log_path.string()));
 

@@ -30,6 +30,7 @@ add_executable(cfio-tests
   test_run_mailbox.cpp
   test_qt_display.cpp
   test_qt_chart_geometry.cpp
+  test_qt_job_table_model.cpp
 )
 
 target_link_libraries(cfio-tests

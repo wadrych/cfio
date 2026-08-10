@@ -45,6 +45,22 @@ std::string FormatBytes(std::uint64_t bytes) {
   return fmt::format("{} B", bytes);
 }
 
+std::uint64_t RateMiB(std::uint64_t bytes_per_sec) {
+  return bytes_per_sec / kBytesPerMiB;
+}
+
+std::uint64_t LatencyUs(std::uint64_t nanoseconds) {
+  return nanoseconds / kNsPerUs;
+}
+
+std::string FormatRate(std::uint64_t bytes_per_sec) {
+  return fmt::format("{} MB/s", RateMiB(bytes_per_sec));
+}
+
+std::string FormatLatencyUs(std::uint64_t nanoseconds) {
+  return fmt::format("{} {}s", LatencyUs(nanoseconds), kMicroSign);
+}
+
 std::string FormatDuration(int seconds) {
   const int clamped = std::max(0, seconds);
   return fmt::format("{:02}:{:02}", clamped / kSecPerMin, clamped % kSecPerMin);

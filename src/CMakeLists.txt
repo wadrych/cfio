@@ -38,6 +38,7 @@ add_library(cfio-core STATIC
         display/qt/run_mailbox.cpp
         display/qt/qt_display.cpp
         display/qt/qt_chart_geometry.cpp
+        display/qt/qt_job_table_model.cpp
         reporting/results_exporter.cpp
 )
 
@@ -77,6 +78,7 @@ if(CFIO_ENABLE_QT)
 
   add_library(cfio-gui STATIC
           display/qt/qt_app_runner.cpp
+          display/qt/qt_job_table_widget.cpp
   )
 
   set_target_properties(cfio-gui PROPERTIES
