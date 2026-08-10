@@ -17,6 +17,10 @@
 #include "logging/logger.h"
 #include "orchestrator/benchmark_orchestrator.h"
 
+#ifdef CFIO_QT_ENABLED
+#include "display/qt/qt_app_runner.h"
+#endif
+
 /// @brief Program entry point.
 /// @param argc  Argument count.
 /// @param argv  Argument vector.
@@ -123,6 +127,14 @@ int main(int argc, char* argv[]) {
     cfio::Logger::Shutdown();
     return EXIT_FAILURE;
   }
+
+#ifdef CFIO_QT_ENABLED
+  if (opts.ui_backend == "qt") {
+    const int qt_rc = cfio::RunQtGui(argc, argv, std::move(opts), std::move(jobs));
+    cfio::Logger::Shutdown();
+    return qt_rc;
+  }
+#endif
 
   cfio::BenchmarkOrchestrator orchestrator(std::move(opts), std::move(jobs));
   const int rc = orchestrator.Run();

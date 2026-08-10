@@ -36,7 +36,7 @@ The binary lands in `build/src/cfio`. Feature flags, all off by default:
 | Flag | Effect |
 |---|---|
 | `CFIO_ENABLE_TUI` | FTXUI interface, not implemented yet |
-| `CFIO_ENABLE_QT` | Qt6 interface, not implemented yet |
+| `CFIO_ENABLE_QT` | Qt6 interface, in progress. Needs `qt6-base-dev` and `qt6-base-dev-tools` from apt |
 | `CFIO_ENABLE_SPDK` | SPDK engine, stub only |
 | `CFIO_ENABLE_COVERAGE` | gcov instrumentation and a `coverage` target |
 

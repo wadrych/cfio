@@ -70,3 +70,32 @@ target_link_libraries(cfio
         PRIVATE cfio-core
         PRIVATE CLI11::CLI11
 )
+
+# cfio-gui static library — Qt6 widget layer, cfio-core never links Qt
+if(CFIO_ENABLE_QT)
+  find_package(Qt6 REQUIRED COMPONENTS Widgets)
+
+  add_library(cfio-gui STATIC
+          display/qt/qt_app_runner.cpp
+  )
+
+  set_target_properties(cfio-gui PROPERTIES
+          AUTOMOC ON
+          AUTOUIC OFF
+          AUTORCC OFF
+  )
+
+  target_compile_definitions(cfio-gui PUBLIC CFIO_QT_ENABLED)
+
+  target_link_libraries(cfio-gui
+          PUBLIC cfio-core
+          PRIVATE Qt6::Widgets
+  )
+
+  if(CFIO_ENABLE_COVERAGE)
+    target_compile_options(cfio-gui PRIVATE ${CFIO_COVERAGE_COMPILE_OPTIONS})
+    target_link_options(cfio-gui PUBLIC ${CFIO_COVERAGE_LINK_OPTIONS})
+  endif()
+
+  target_link_libraries(cfio PRIVATE cfio-gui)
+endif()

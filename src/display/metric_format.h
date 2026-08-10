@@ -9,9 +9,13 @@
 
 namespace cfio {
 
+/// Bytes in one kibibyte.
 constexpr std::uint64_t kBytesPerKiB = 1024ULL;
+/// Bytes in one mebibyte.
 constexpr std::uint64_t kBytesPerMiB = 1024ULL * 1024ULL;
+/// Bytes in one gibibyte.
 constexpr std::uint64_t kBytesPerGiB = 1024ULL * 1024ULL * 1024ULL;
+/// Nanoseconds in one microsecond.
 constexpr std::uint64_t kNsPerUs = 1000ULL;
 
 /// @brief Format an integer with thousands separators

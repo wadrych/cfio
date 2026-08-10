@@ -1,0 +1,7 @@
+---
+InheritParentConfig: true
+
+CheckOptions:
+  - key: readability-identifier-naming.MethodIgnoredRegexp
+    value: '^(paintEvent|closeEvent|resizeEvent|showEvent|sizeHint|minimumSizeHint|event)$'
+...
