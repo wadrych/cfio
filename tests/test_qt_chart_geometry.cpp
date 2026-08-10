@@ -2,6 +2,7 @@
 /// @brief Unit tests for the Qt free chart geometry helpers
 
 #include <chrono>
+#include <limits>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -215,6 +216,86 @@ TEST(MaxYTest, AllZeroSeriesStillScales) {
 
   EXPECT_GT(scale.max, scale.min);
   EXPECT_FALSE(AxisTicks(scale).empty());
+}
+
+TEST(ChartKindTest, MapsKindToItsMetrics) {
+  EXPECT_EQ(ChartKindMetrics(ChartKind::kIops), std::vector<ChartMetric>{ChartMetric::kIops});
+  EXPECT_EQ(ChartKindMetrics(ChartKind::kBandwidth),
+            std::vector<ChartMetric>{ChartMetric::kBandwidth});
+
+  const std::vector<ChartMetric> latency = ChartKindMetrics(ChartKind::kLatency);
+  ASSERT_EQ(latency.size(), 3U);
+  EXPECT_EQ(latency[0], ChartMetric::kLatencyP50);
+  EXPECT_EQ(latency[1], ChartMetric::kLatencyP95);
+  EXPECT_EQ(latency[2], ChartMetric::kLatencyP99);
+}
+
+TEST(ChartKindTest, HasATitlePerKind) {
+  EXPECT_EQ(ChartKindTitle(ChartKind::kIops), "IOPS");
+  EXPECT_EQ(ChartKindTitle(ChartKind::kBandwidth), "Bandwidth");
+  EXPECT_EQ(ChartKindTitle(ChartKind::kLatency), "Latency");
+}
+
+TEST(FormatAxisTickTest, UsesTheUnitOfTheKind) {
+  EXPECT_EQ(FormatAxisTick(ChartKind::kIops, 125432.0), "125,432");
+  EXPECT_EQ(FormatAxisTick(ChartKind::kBandwidth, 512.0 * 1024.0 * 1024.0), "512 MB/s");
+  EXPECT_EQ(FormatAxisTick(ChartKind::kLatency, 45000.0), "45 μs");
+}
+
+TEST(FormatAxisTickTest, ClampsBadValuesToZero) {
+  EXPECT_EQ(FormatAxisTick(ChartKind::kIops, 0.0), "0");
+  EXPECT_EQ(FormatAxisTick(ChartKind::kIops, -5.0), "0");
+  EXPECT_EQ(FormatAxisTick(ChartKind::kLatency, std::numeric_limits<double>::quiet_NaN()), "0 μs");
+  EXPECT_EQ(FormatAxisTick(ChartKind::kBandwidth, std::numeric_limits<double>::infinity()),
+            "0 MB/s");
+}
+
+TEST(FormatTimeTickTest, RendersMinutesAndSeconds) {
+  EXPECT_EQ(FormatTimeTick(0.0), "00:00");
+  EXPECT_EQ(FormatTimeTick(75.4), "01:15");
+  EXPECT_EQ(FormatTimeTick(-3.0), "00:00");
+}
+
+TEST(MakeUnitAxisScaleTest, KeepsTicksRoundInTheDrawnUnit) {
+  const double peak_bytes = 762.0 * 1024.0 * 1024.0;
+  const AxisScale bandwidth = MakeUnitAxisScale(ChartKind::kBandwidth, 0.0, peak_bytes);
+
+  EXPECT_EQ(FormatAxisTick(ChartKind::kBandwidth, bandwidth.tick_step), "200 MB/s");
+  EXPECT_EQ(FormatAxisTick(ChartKind::kBandwidth, bandwidth.max), "800 MB/s");
+  EXPECT_GE(bandwidth.max, peak_bytes);
+
+  const AxisScale latency = MakeUnitAxisScale(ChartKind::kLatency, 0.0, 400.0);
+  EXPECT_EQ(FormatAxisTick(ChartKind::kLatency, latency.tick_step), "1 μs");
+}
+
+TEST(MakeUnitAxisScaleTest, LeavesIopsUnscaled) {
+  const AxisScale iops = MakeUnitAxisScale(ChartKind::kIops, 0.0, 180000.0);
+
+  EXPECT_NEAR(iops.min, 0.0, kEps);
+  EXPECT_NEAR(iops.max, 200000.0, kEps);
+  EXPECT_NEAR(iops.tick_step, 50000.0, kEps);
+}
+
+TEST(ComputePlotRectTest, SubtractsTheMargins) {
+  const ChartMargins margins{40.0, 20.0, 10.0, 30.0};
+  const ChartRect plot = ComputePlotRect(300.0, 200.0, margins);
+
+  EXPECT_NEAR(plot.left, 40.0, kEps);
+  EXPECT_NEAR(plot.top, 20.0, kEps);
+  EXPECT_NEAR(plot.width, 250.0, kEps);
+  EXPECT_NEAR(plot.height, 150.0, kEps);
+}
+
+TEST(ComputePlotRectTest, StaysPositiveWhenTheWidgetIsTiny) {
+  const ChartMargins margins{40.0, 20.0, 10.0, 30.0};
+  const ChartRect plot = ComputePlotRect(10.0, 5.0, margins);
+
+  EXPECT_GT(plot.width, 0.0);
+  EXPECT_GT(plot.height, 0.0);
+
+  const AxisScale scale = MakeAxisScale(0.0, 100.0);
+  EXPECT_GE(MapY(50.0, scale, plot), plot.top);
+  EXPECT_LE(MapY(50.0, scale, plot), plot.top + plot.height);
 }
 
 }  // namespace

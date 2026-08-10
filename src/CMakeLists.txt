@@ -79,6 +79,7 @@ if(CFIO_ENABLE_QT)
   add_library(cfio-gui STATIC
           display/qt/qt_app_runner.cpp
           display/qt/qt_job_table_widget.cpp
+          display/qt/qt_graph_widget.cpp
   )
 
   set_target_properties(cfio-gui PROPERTIES

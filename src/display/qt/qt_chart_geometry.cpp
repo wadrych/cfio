@@ -6,9 +6,11 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <string>
 #include <vector>
 
+#include "display/metric_format.h"
 #include "telemetry/metrics_snapshot.h"
 
 namespace cfio {
@@ -16,6 +18,14 @@ namespace {
 
 constexpr int kMaxTicks = 64;
 constexpr double kTickEpsilon = 1e-9;
+constexpr double kMinPlotSize = 1.0;
+
+std::uint64_t TickToUnsigned(double value) {
+  if (!std::isfinite(value) || value <= 0.0) {
+    return 0;
+  }
+  return static_cast<std::uint64_t>(std::llround(value));
+}
 
 double MetricValue(const PerJobMetrics& metrics, ChartMetric metric) {
   switch (metric) {
@@ -55,6 +65,85 @@ double ElapsedSeconds(const std::chrono::steady_clock::time_point& from,
 }
 
 }  // namespace
+
+std::vector<ChartMetric> ChartKindMetrics(ChartKind kind) {
+  switch (kind) {
+    case ChartKind::kIops:
+      return {ChartMetric::kIops};
+    case ChartKind::kBandwidth:
+      return {ChartMetric::kBandwidth};
+    case ChartKind::kLatency:
+      return {ChartMetric::kLatencyP50, ChartMetric::kLatencyP95, ChartMetric::kLatencyP99};
+  }
+  return {};
+}
+
+std::string ChartKindTitle(ChartKind kind) {
+  switch (kind) {
+    case ChartKind::kIops:
+      return "IOPS";
+    case ChartKind::kBandwidth:
+      return "Bandwidth";
+    case ChartKind::kLatency:
+      return "Latency";
+  }
+  return "";
+}
+
+std::string FormatAxisTick(ChartKind kind, double value) {
+  const std::uint64_t rounded = TickToUnsigned(value);
+  switch (kind) {
+    case ChartKind::kIops:
+      return FormatCount(rounded);
+    case ChartKind::kBandwidth:
+      return FormatRate(rounded);
+    case ChartKind::kLatency:
+      return FormatLatencyUs(rounded);
+  }
+  return "";
+}
+
+AxisScale MakeUnitAxisScale(ChartKind kind, double min_value, double max_value) {
+  double divisor = 1.0;
+  switch (kind) {
+    case ChartKind::kIops:
+      break;
+    case ChartKind::kBandwidth:
+      divisor = static_cast<double>(kBytesPerMiB);
+      break;
+    case ChartKind::kLatency:
+      divisor = static_cast<double>(kNsPerUs);
+      break;
+  }
+
+  AxisScale scale = MakeAxisScale(min_value / divisor, max_value / divisor);
+  if (scale.tick_step < 1.0) {
+    // Labels are whole drawn units, a finer step would repeat the same text on every tick.
+    scale.tick_step = 1.0;
+    scale.min = std::floor(scale.min);
+    scale.max = std::max(std::ceil(scale.max), scale.min + 1.0);
+  }
+  scale.min *= divisor;
+  scale.max *= divisor;
+  scale.tick_step *= divisor;
+  return scale;
+}
+
+std::string FormatTimeTick(double seconds) {
+  if (!std::isfinite(seconds) || seconds <= 0.0) {
+    return FormatDuration(0);
+  }
+  return FormatDuration(static_cast<int>(std::llround(seconds)));
+}
+
+ChartRect ComputePlotRect(double width, double height, const ChartMargins& margins) {
+  ChartRect plot;
+  plot.left = margins.left;
+  plot.top = margins.top;
+  plot.width = std::max(width - margins.left - margins.right, kMinPlotSize);
+  plot.height = std::max(height - margins.top - margins.bottom, kMinPlotSize);
+  return plot;
+}
 
 double NiceTickStep(double range, int target_ticks) {
   if (!std::isfinite(range) || range <= 0.0) {

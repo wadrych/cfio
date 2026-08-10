@@ -23,6 +23,13 @@ enum class ChartMetric : std::uint8_t {
   kLatencyP99   ///< 99th percentile latency in nanoseconds
 };
 
+/// @brief Sub plot of the GUI, each one has its own vertical scale
+enum class ChartKind : std::uint8_t {
+  kIops,       ///< Instant IOPS
+  kBandwidth,  ///< Instant bandwidth
+  kLatency     ///< Completion latency percentiles
+};
+
 /// @brief One point in either value space or pixel space
 struct ChartPoint {
   double x{};  ///< Elapsed seconds, or pixel column
@@ -49,6 +56,55 @@ struct ChartRect {
   double width{1.0};   ///< Width in pixels
   double height{1.0};  ///< Height in pixels
 };
+
+/// @brief Blank space between the widget edges and the plot area
+struct ChartMargins {
+  double left{};    ///< Space left of the plot, holds the vertical tick labels
+  double top{};     ///< Space above the plot, holds the title and the legend
+  double right{};   ///< Space right of the plot
+  double bottom{};  ///< Space below the plot, holds the time labels
+};
+
+/// @brief List the metrics one sub plot draws
+///
+/// @param kind  Sub plot to describe.
+/// @return One metric for IOPS and bandwidth, three percentiles for latency.
+[[nodiscard]] std::vector<ChartMetric> ChartKindMetrics(ChartKind kind);
+
+/// @brief Title text of one sub plot
+///
+/// @param kind  Sub plot to describe.
+/// @return The heading drawn above the plot.
+[[nodiscard]] std::string ChartKindTitle(ChartKind kind);
+
+/// @brief Format a vertical tick value in the unit of its sub plot
+///
+/// @param kind   Sub plot the tick belongs to.
+/// @param value  Tick value, negative and non finite values read as zero.
+/// @return Tick text, for example "125,432", "512 MB/s" or "45 μs".
+[[nodiscard]] std::string FormatAxisTick(ChartKind kind, double value);
+
+/// @brief Format an elapsed time tick
+///
+/// @param seconds  Seconds since the run started, negative values read as zero.
+/// @return The time as mm:ss.
+[[nodiscard]] std::string FormatTimeTick(double seconds);
+
+/// @brief Round a value range outwards to whole ticks of the displayed unit
+///
+/// @param kind       Sub plot the scale belongs to.
+/// @param min_value  Lowest data value in storage units.
+/// @param max_value  Highest data value in storage units.
+/// @return A scale in storage units whose ticks are round in the drawn unit.
+[[nodiscard]] AxisScale MakeUnitAxisScale(ChartKind kind, double min_value, double max_value);
+
+/// @brief Carve the plot area out of a widget
+///
+/// @param width    Widget width in pixels.
+/// @param height   Widget height in pixels.
+/// @param margins  Space to keep free on each side.
+/// @return The plot area, always at least one pixel wide and high.
+[[nodiscard]] ChartRect ComputePlotRect(double width, double height, const ChartMargins& margins);
 
 /// @brief Pick a round tick distance of 1, 2 or 5 times a power of ten
 ///
