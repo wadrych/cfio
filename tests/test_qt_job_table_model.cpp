@@ -9,12 +9,14 @@
 #include <gtest/gtest.h>
 
 #include "display/qt/qt_job_table_model.h"
+#include "telemetry/benchmark_results.h"
 #include "telemetry/metrics_snapshot.h"
 
 namespace cfio {
 namespace {
 
 constexpr std::uint64_t kMiB = 1024ULL * 1024ULL;
+constexpr std::uint64_t kGiB = 1024ULL * kMiB;
 
 std::size_t Index(JobTableColumn column) {
   return static_cast<std::size_t>(column);
@@ -137,6 +139,55 @@ TEST(BuildJobTableRowsTest, TruncatesSubUnitRatesAndLatency) {
 
   EXPECT_EQ(rows[0].cells[Index(JobTableColumn::kBwInstant)], "0 MB/s");
   EXPECT_EQ(rows[0].cells[Index(JobTableColumn::kLatP99)], "0 μs");
+}
+
+BenchmarkResults SampleResults() {
+  BenchmarkResults results;
+
+  JobResults read;
+  read.name = "rand-read-4k";
+  read.iops_avg = 118200;
+  read.bw_avg_bytes = 483 * kMiB;
+  read.total_bytes = 20 * kGiB;
+
+  JobResults write;
+  write.name = "seq-write-128k";
+  write.iops_avg = 51003;
+  write.bw_avg_bytes = 198 * kMiB;
+  write.total_bytes = 7 * kGiB;
+  write.read_errors = 1;
+  write.write_errors = 2;
+
+  results.jobs = {read, write};
+  return results;
+}
+
+TEST(BuildRunSummaryTest, SumsEveryJobAndMatchesTerminalFormatting) {
+  EXPECT_EQ(BuildRunSummary(SampleResults()),
+            "TOTAL   IOPS 169,203   BW 681 MB/s   IO 27.0 GiB   Err R:1 W:2");
+}
+
+TEST(BuildRunSummaryTest, MarksInterrupted) {
+  BenchmarkResults results = SampleResults();
+  results.interrupted = true;
+
+  EXPECT_EQ(BuildRunSummary(results),
+            "TOTAL   IOPS 169,203   BW 681 MB/s   IO 27.0 GiB   Err R:1 W:2 (interrupted)");
+}
+
+TEST(BuildRunSummaryTest, FailureOutranksInterrupted) {
+  BenchmarkResults results = SampleResults();
+  results.interrupted = true;
+  results.jobs[1].failed = true;
+
+  EXPECT_EQ(
+      BuildRunSummary(results),
+      "TOTAL   IOPS 169,203   BW 681 MB/s   IO 27.0 GiB   Err R:1 W:2 (aborted: job failure)");
+}
+
+TEST(BuildRunSummaryTest, EmptyResultsSumToZero) {
+  EXPECT_EQ(BuildRunSummary(BenchmarkResults{}),
+            "TOTAL   IOPS 0   BW 0 MB/s   IO 0 B   Err R:0 W:0");
 }
 
 }  // namespace

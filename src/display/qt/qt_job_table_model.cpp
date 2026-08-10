@@ -3,18 +3,31 @@
 
 #include "display/qt/qt_job_table_model.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <string>
 #include <vector>
 
 #include <fmt/format.h>
 
 #include "display/metric_format.h"
+#include "telemetry/benchmark_results.h"
 #include "telemetry/metrics_snapshot.h"
 
 namespace cfio {
 namespace {
 
 constexpr const char* kTotalRowName = "TOTAL";
+
+std::string StopLabel(const BenchmarkResults& results) {
+  if (std::ranges::any_of(results.jobs, [](const JobResults& job) { return job.failed; })) {
+    return " (aborted: job failure)";
+  }
+  if (results.interrupted) {
+    return " (interrupted)";
+  }
+  return {};
+}
 
 JobTableRow MakeRow(const PerJobMetrics& job, bool is_total) {
   JobTableRow row;
@@ -53,6 +66,26 @@ std::vector<JobTableRow> BuildJobTableRows(const MetricsSnapshot& snapshot) {
   }
   rows.push_back(MakeRow(snapshot.aggregate, true));
   return rows;
+}
+
+std::string BuildRunSummary(const BenchmarkResults& results) {
+  std::uint64_t iops = 0;
+  std::uint64_t bandwidth = 0;
+  std::uint64_t bytes = 0;
+  std::uint64_t read_errors = 0;
+  std::uint64_t write_errors = 0;
+
+  for (const JobResults& job : results.jobs) {
+    iops += job.iops_avg;
+    bandwidth += job.bw_avg_bytes;
+    bytes += job.total_bytes;
+    read_errors += job.read_errors;
+    write_errors += job.write_errors;
+  }
+
+  return fmt::format("{}   IOPS {}   BW {} MB/s   IO {}   Err R:{} W:{}{}", kTotalRowName,
+                     FormatCount(iops), RateMiB(bandwidth), FormatBytes(bytes), read_errors,
+                     write_errors, StopLabel(results));
 }
 
 }  // namespace cfio

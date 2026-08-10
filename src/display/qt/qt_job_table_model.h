@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "telemetry/benchmark_results.h"
 #include "telemetry/metrics_snapshot.h"
 
 namespace cfio {
@@ -45,6 +46,11 @@ struct JobTableRow {
 /// @param snapshot  Sample to render.
 /// @return Job rows in snapshot order followed by the total row.
 [[nodiscard]] std::vector<JobTableRow> BuildJobTableRows(const MetricsSnapshot& snapshot);
+
+/// @brief Build the totals line shown once a run finished
+/// @param results  Final result set.
+/// @return Summed IOPS, bandwidth, transferred bytes and errors, followed by a stop label.
+[[nodiscard]] std::string BuildRunSummary(const BenchmarkResults& results);
 
 }  // namespace cfio
 
