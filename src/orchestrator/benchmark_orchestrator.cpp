@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "config/job_config.h"
+#include "display/display_context_build.h"
 #include "display/display_factory.h"
 #include "engine/engine_factory.h"
 #include "engine/i_engine_io.h"
@@ -127,34 +128,6 @@ std::string LocalTimestamp() {
   std::array<char, 32> buffer{};
   const std::size_t written = std::strftime(buffer.data(), buffer.size(), "%Y%m%dT%H%M%S", &local);
   return {buffer.data(), written};
-}
-
-/// @brief Engine name for the display header.
-std::string DeriveEngineLabel(const CliOptions& options, const std::vector<JobConfig>& jobs) {
-  if (options.engine_override.has_value()) {
-    return options.engine_override.value();
-  }
-  const std::string& first = jobs.front().engine;
-  for (const JobConfig& job : jobs) {
-    if (job.engine != first) {
-      return "mixed";
-    }
-  }
-  return first;
-}
-
-/// @brief Direct flag for the display header.
-std::string DeriveDirectLabel(const CliOptions& options, const std::vector<JobConfig>& jobs) {
-  if (options.direct_override.has_value()) {
-    return options.direct_override.value() ? "ON" : "OFF";
-  }
-  const bool first = jobs.front().direct;
-  for (const JobConfig& job : jobs) {
-    if (job.direct != first) {
-      return "mixed";
-    }
-  }
-  return first ? "ON" : "OFF";
 }
 
 }  // namespace
@@ -293,11 +266,7 @@ void BenchmarkOrchestrator::CleanupFiles() {
 }
 
 DisplayContext BenchmarkOrchestrator::BuildDisplayContext() const {
-  DisplayContext context;
-  context.engine_label = DeriveEngineLabel(options_, jobs_);
-  context.direct_label = DeriveDirectLabel(options_, jobs_);
-  context.log_path = output_dir_ / "cfio.log";
-  return context;
+  return MakeDisplayContext(options_, jobs_, output_dir_ / "cfio.log");
 }
 
 }  // namespace cfio

@@ -57,6 +57,10 @@ class QtMainWindow final : public QMainWindow {
   /// @brief Stop the run, or close the window once the run is over
   void OnStopClicked();
 
+  /// @brief Show the run metadata published by the benchmark thread
+  /// @param context  Header data replacing the bootstrap values.
+  void ApplyContext(const DisplayContext& context);
+
   /// @brief Render one sample into the table and the sub plots
   /// @param snapshot  Sample to show.
   void ApplySnapshot(const MetricsSnapshot& snapshot);
@@ -79,6 +83,8 @@ class QtMainWindow final : public QMainWindow {
   bool finished_{false};                  ///< True once the run is over
 
   QTimer* timer_;                                     ///< Drives the mailbox polling
+  QLabel* run_label_;                                 ///< Engine and direct labels
+  QLabel* log_label_;                                 ///< Log file of this run
   QProgressBar* progress_;                            ///< Elapsed fraction of the runtime
   QLabel* status_;                                    ///< Clock while running, totals when done
   QPushButton* stop_button_;                          ///< Stops the run, then closes the window

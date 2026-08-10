@@ -19,6 +19,7 @@ MetricsSnapshot MakeSnapshot(int second, uint64_t iops, uint64_t bandwidth, uint
                              uint64_t p95, uint64_t p99) {
   MetricsSnapshot snapshot;
   snapshot.timestamp = std::chrono::steady_clock::time_point{} + std::chrono::seconds(second);
+  snapshot.elapsed_seconds = static_cast<double>(second);
   snapshot.aggregate.job_name = "TOTAL";
   snapshot.aggregate.iops_instant = iops;
   snapshot.aggregate.bw_instant = bandwidth;
@@ -167,12 +168,34 @@ TEST(ExtractSeriesTest, ReadsAggregateMetricOverTime) {
   const ChartSeries iops = ExtractSeries(history, ChartMetric::kIops);
 
   EXPECT_EQ(iops.label, "IOPS");
-  ASSERT_EQ(iops.points.size(), 3U);
+  ASSERT_EQ(iops.points.size(), 4U);
   EXPECT_NEAR(iops.points[0].x, 0.0, kEps);
+  EXPECT_NEAR(iops.points[1].x, 10.0, kEps);
+  EXPECT_NEAR(iops.points[2].x, 11.0, kEps);
+  EXPECT_NEAR(iops.points[3].x, 13.0, kEps);
+  EXPECT_NEAR(iops.points[0].y, 0.0, kEps);
+  EXPECT_NEAR(iops.points[1].y, 1000.0, kEps);
+  EXPECT_NEAR(iops.points[3].y, 3000.0, kEps);
+}
+
+TEST(ExtractSeriesTest, AnchorsLineAtRunStart) {
+  const std::vector<MetricsSnapshot> history{MakeSnapshot(1, 1000, 4096, 100, 200, 300)};
+
+  const ChartSeries iops = ExtractSeries(history, ChartMetric::kIops);
+
+  ASSERT_EQ(iops.points.size(), 2U);
+  EXPECT_NEAR(iops.points[0].x, 0.0, kEps);
+  EXPECT_NEAR(iops.points[0].y, 0.0, kEps);
   EXPECT_NEAR(iops.points[1].x, 1.0, kEps);
-  EXPECT_NEAR(iops.points[2].x, 3.0, kEps);
+}
+
+TEST(ExtractSeriesTest, SampleAtRunStartNeedsNoAnchor) {
+  const std::vector<MetricsSnapshot> history{MakeSnapshot(0, 1000, 4096, 100, 200, 300)};
+
+  const ChartSeries iops = ExtractSeries(history, ChartMetric::kIops);
+
+  ASSERT_EQ(iops.points.size(), 1U);
   EXPECT_NEAR(iops.points[0].y, 1000.0, kEps);
-  EXPECT_NEAR(iops.points[2].y, 3000.0, kEps);
 }
 
 TEST(ExtractSeriesTest, ReadsEachMetric) {
@@ -192,13 +215,21 @@ TEST(ExtractSeriesTest, EmptyHistoryGivesEmptySeries) {
   EXPECT_TRUE(series.points.empty());
 }
 
-TEST(SeriesDurationSecondsTest, MeasuresFirstToLast) {
+TEST(SeriesDurationSecondsTest, MeasuresRunStartToLastSample) {
   const std::vector<MetricsSnapshot> history{MakeSnapshot(5, 0, 0, 0, 0, 0),
                                              MakeSnapshot(35, 0, 0, 0, 0, 0)};
 
-  EXPECT_NEAR(SeriesDurationSeconds(history), 30.0, kEps);
+  EXPECT_NEAR(SeriesDurationSeconds(history), 35.0, kEps);
   EXPECT_NEAR(SeriesDurationSeconds({}), 0.0, kEps);
-  EXPECT_NEAR(SeriesDurationSeconds({MakeSnapshot(5, 0, 0, 0, 0, 0)}), 0.0, kEps);
+  EXPECT_NEAR(SeriesDurationSeconds({MakeSnapshot(5, 0, 0, 0, 0, 0)}), 5.0, kEps);
+}
+
+TEST(SeriesDurationSecondsTest, RoundsLateSampleToWholeSecond) {
+  MetricsSnapshot late = MakeSnapshot(10, 0, 0, 0, 0, 0);
+  late.elapsed_seconds = 10.024;
+
+  // The axis must end on the run duration, not stretch past it.
+  EXPECT_NEAR(SeriesDurationSeconds({late}), 10.0, kEps);
 }
 
 TEST(MaxYTest, ScansEverySeries) {

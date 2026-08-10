@@ -42,7 +42,8 @@ class MetricsAggregator {
   /// @brief Stop and join the sampling thread
   void Stop();
 
-  /// @brief Take one last snapshot for the display
+  /// @brief Take one last snapshot for the display, recording it in the time
+  ///        series when it covers at least half a record interval
   void TakeFinalSnapshot();
 
   /// @brief Get the most recent snapshot

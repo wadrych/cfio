@@ -9,6 +9,7 @@
 #include <mutex>
 #include <optional>
 
+#include "display/display_context.h"
 #include "telemetry/benchmark_results.h"
 #include "telemetry/metrics_snapshot.h"
 
@@ -36,6 +37,10 @@ class RunMailbox {
   /// @param runtime_seconds  Configured run duration
   void SetRuntime(int runtime_seconds);
 
+  /// @brief Hand the run metadata to the GUI
+  /// @param context  Header data known only once the run starts
+  void PublishContext(const DisplayContext& context);
+
   /// @brief Store the newest sample and advance the sequence
   /// @param snapshot  Latest metrics
   void PublishSnapshot(const MetricsSnapshot& snapshot);
@@ -59,6 +64,10 @@ class RunMailbox {
   /// @return The last published snapshot, empty if none was published
   [[nodiscard]] MetricsSnapshot LatestSnapshot() const;
 
+  /// @brief Move the run metadata out of the mailbox
+  /// @return The context on the first call after PublishContext, nullopt otherwise
+  [[nodiscard]] std::optional<DisplayContext> TakeContext();
+
   /// @brief Move the results out of the mailbox
   /// @return The results on the first call after PublishResults, nullopt otherwise
   [[nodiscard]] std::optional<BenchmarkResults> TakeResults();
@@ -78,6 +87,7 @@ class RunMailbox {
   mutable std::mutex mutex_;  ///< Guards every non atomic member
 
   MetricsSnapshot latest_;                   ///< Newest published sample
+  std::optional<DisplayContext> context_;    ///< Run metadata until taken
   std::optional<BenchmarkResults> results_;  ///< Final results until taken
   Phase phase_{Phase::kIdle};                ///< Current run stage
   int runtime_seconds_{0};                   ///< Configured run duration

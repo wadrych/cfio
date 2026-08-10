@@ -25,6 +25,9 @@ constexpr auto kTickInterval = std::chrono::milliseconds(500);
 
 constexpr std::uint64_t kTicksPerRecord = 2;
 
+constexpr double kMinFinalRecordSeconds =
+    std::chrono::duration<double>(kTickInterval * kTicksPerRecord).count() / 2.0;
+
 constexpr double kP50 = 0.50;
 constexpr double kP95 = 0.95;
 constexpr double kP99 = 0.99;
@@ -125,6 +128,7 @@ MetricsSnapshot MetricsAggregator::TakeSnapshot(bool record_ts) {
 
   MetricsSnapshot snapshot;
   snapshot.timestamp = now;
+  snapshot.elapsed_seconds = since_start;
   snapshot.jobs.reserve(workers_.size());
 
   Log2Histogram<64, std::uint64_t> global;
@@ -186,7 +190,15 @@ void MetricsAggregator::RecordTimeSeries(const MetricsSnapshot& snapshot) {
 
 void MetricsAggregator::TakeFinalSnapshot() {
   Stop();  // join first, this thread then owns the diff basis alone
-  MetricsSnapshot snapshot = TakeSnapshot(false);
+
+  const double tail = ElapsedSeconds(prev_sample_time_, std::chrono::steady_clock::now());
+  const bool record_ts = tail >= kMinFinalRecordSeconds;
+
+  MetricsSnapshot snapshot = TakeSnapshot(record_ts);
+  if (record_ts) {
+    RecordTimeSeries(snapshot);
+  }
+
   const std::lock_guard<std::mutex> lock(snapshot_mutex_);
   latest_snapshot_ = std::move(snapshot);
 }

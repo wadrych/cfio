@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 
+#include "display/display_context.h"
 #include "display/qt/run_mailbox.h"
 #include "telemetry/benchmark_results.h"
 #include "telemetry/metrics_snapshot.h"
@@ -214,6 +215,40 @@ TEST(RunMailboxTest, ConcurrentPublishAndPoll) {
   EXPECT_TRUE(mailbox.StopRequested());
   EXPECT_GT(mailbox.Sequence(), 0U);
   EXPECT_LE(mailbox.Sequence(), kPublishCount);
+}
+
+TEST(RunMailboxTest, ContextIsTakenOnce) {
+  RunMailbox mailbox;
+  EXPECT_FALSE(mailbox.TakeContext().has_value());
+
+  DisplayContext context;
+  context.engine_label = "psync";
+  context.direct_label = "ON";
+  context.log_path = "cfio-results/job-20260810T120000/cfio.log";
+  mailbox.PublishContext(context);
+
+  const auto taken = mailbox.TakeContext();
+  ASSERT_TRUE(taken.has_value());
+  if (taken.has_value()) {
+    EXPECT_EQ(taken->engine_label, "psync");
+    EXPECT_EQ(taken->direct_label, "ON");
+    EXPECT_EQ(taken->log_path, context.log_path);
+  }
+
+  EXPECT_FALSE(mailbox.TakeContext().has_value());
+}
+
+TEST(RunMailboxTest, PublishContextLeavesSequenceAlone) {
+  RunMailbox mailbox;
+
+  mailbox.PublishContext(DisplayContext{});
+  EXPECT_EQ(mailbox.Sequence(), 0U);
+
+  mailbox.PublishSnapshot(MakeSnapshot(1));
+  EXPECT_EQ(mailbox.Sequence(), 1U);
+
+  mailbox.PublishContext(DisplayContext{});
+  EXPECT_EQ(mailbox.Sequence(), 1U);
 }
 
 }  // namespace

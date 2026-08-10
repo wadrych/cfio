@@ -40,6 +40,24 @@ constexpr int kProgressMinWidth = 240;
 constexpr std::array<ChartKind, kGraphCount> kGraphKinds = {ChartKind::kIops, ChartKind::kBandwidth,
                                                             ChartKind::kLatency};
 
+/// @brief Engine and direct part of the header.
+/// @param context  Run metadata.
+/// @return Text for the left header label.
+QString HeaderRunText(const DisplayContext& context) {
+  return QString::fromStdString("Engine: " + context.engine_label +
+                                "    Direct: " + context.direct_label);
+}
+
+/// @brief Log path part of the header.
+/// @param context  Run metadata.
+/// @return Text for the right header label, a placeholder until the run starts.
+QString HeaderLogText(const DisplayContext& context) {
+  if (context.log_path.empty()) {
+    return QStringLiteral("Log: pending");
+  }
+  return QString::fromStdString("Log: " + context.log_path.string());
+}
+
 }  // namespace
 
 QtMainWindow::QtMainWindow(RunMailbox& mailbox, DisplayContext context, QWidget* parent)
@@ -47,6 +65,8 @@ QtMainWindow::QtMainWindow(RunMailbox& mailbox, DisplayContext context, QWidget*
       mailbox_(&mailbox),
       context_(std::move(context)),
       timer_(new QTimer(this)),
+      run_label_(new QLabel(this)),
+      log_label_(new QLabel(this)),
       progress_(new QProgressBar(this)),
       status_(new QLabel(this)),
       stop_button_(new QPushButton(QStringLiteral("Stop"), this)),
@@ -70,15 +90,12 @@ void QtMainWindow::BuildLayout() {
   auto* layout = new QVBoxLayout(central);
 
   auto* header = new QHBoxLayout;
-  auto* run_label = new QLabel(QString::fromStdString("Engine: " + context_.engine_label +
-                                                      "    Direct: " + context_.direct_label),
-                               central);
-  auto* log_label =
-      new QLabel(QString::fromStdString("Log: " + context_.log_path.string()), central);
-  log_label->setTextInteractionFlags(Qt::TextSelectableByMouse);
-  header->addWidget(run_label);
+  run_label_->setText(HeaderRunText(context_));
+  log_label_->setText(HeaderLogText(context_));
+  log_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+  header->addWidget(run_label_);
   header->addStretch();
-  header->addWidget(log_label);
+  header->addWidget(log_label_);
   layout->addLayout(header);
 
   auto* controls = new QHBoxLayout;
@@ -109,6 +126,10 @@ void QtMainWindow::OnTick() {
   if (phase != Phase::kIdle && !clock_.isValid()) {
     clock_.start();
   }
+
+  if (std::optional<DisplayContext> context = mailbox_->TakeContext(); context.has_value()) {
+    ApplyContext(context.value());
+  }
   UpdateProgress();
 
   const std::uint64_t sequence = mailbox_->Sequence();
@@ -123,6 +144,8 @@ void QtMainWindow::OnTick() {
 
   if (std::optional<BenchmarkResults> results = mailbox_->TakeResults(); results.has_value()) {
     ApplyResults(results.value());
+  } else {
+    status_->setText(QStringLiteral("run ended without results, see log"));
   }
   MarkFinished();
 }
@@ -135,6 +158,12 @@ void QtMainWindow::OnStopClicked() {
   mailbox_->RequestStop();
   stop_button_->setEnabled(false);
   stop_button_->setText(QStringLiteral("Stopping..."));
+}
+
+void QtMainWindow::ApplyContext(const DisplayContext& context) {
+  context_ = context;
+  run_label_->setText(HeaderRunText(context_));
+  log_label_->setText(HeaderLogText(context_));
 }
 
 void QtMainWindow::ApplySnapshot(const MetricsSnapshot& snapshot) {
@@ -167,6 +196,12 @@ void QtMainWindow::MarkFinished() {
 }
 
 void QtMainWindow::UpdateProgress() {
+  if (mailbox_->CurrentPhase() == Phase::kIdle) {
+    progress_->setValue(0);
+    status_->setText(QStringLiteral("preparing files..."));
+    return;
+  }
+
   const int runtime = mailbox_->RuntimeSeconds();
   const int total_ms = runtime * kMsPerSecond;
   progress_->setMaximum(std::max(total_ms, 1));

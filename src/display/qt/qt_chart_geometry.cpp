@@ -4,7 +4,6 @@
 #include "display/qt/qt_chart_geometry.h"
 
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <string>
@@ -57,11 +56,6 @@ std::string MetricLabel(ChartMetric metric) {
       return "p99";
   }
   return "";
-}
-
-double ElapsedSeconds(const std::chrono::steady_clock::time_point& from,
-                      const std::chrono::steady_clock::time_point& to) {
-  return std::chrono::duration<double>(to - from).count();
 }
 
 }  // namespace
@@ -245,20 +239,22 @@ ChartSeries ExtractSeries(const std::vector<MetricsSnapshot>& history, ChartMetr
     return series;
   }
 
-  const std::chrono::steady_clock::time_point start = history.front().timestamp;
-  series.points.reserve(history.size());
+  series.points.reserve(history.size() + 1);
+  if (history.front().elapsed_seconds > 0.0) {
+    series.points.push_back(ChartPoint{0.0, 0.0});
+  }
   for (const MetricsSnapshot& snapshot : history) {
-    series.points.push_back(ChartPoint{ElapsedSeconds(start, snapshot.timestamp),
-                                       MetricValue(snapshot.aggregate, metric)});
+    series.points.push_back(
+        ChartPoint{snapshot.elapsed_seconds, MetricValue(snapshot.aggregate, metric)});
   }
   return series;
 }
 
 double SeriesDurationSeconds(const std::vector<MetricsSnapshot>& history) {
-  if (history.size() < 2) {
+  if (history.empty()) {
     return 0.0;
   }
-  return ElapsedSeconds(history.front().timestamp, history.back().timestamp);
+  return std::max(std::round(history.back().elapsed_seconds), 0.0);
 }
 
 double MaxY(const std::vector<ChartSeries>& series) {

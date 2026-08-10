@@ -2,7 +2,7 @@
 
 A multithreaded storage benchmark for Linux, inspired by fio. It runs jobs defined in a config
 file, drives read and write streams against files or block devices, and reports IOPS, bandwidth
-and latency percentiles.
+and latency percentiles. The terminal interface and the Qt6 window are done. 
 
 ## Requirements
 
@@ -36,7 +36,7 @@ The binary lands in `build/src/cfio`. Feature flags, all off by default:
 | Flag | Effect |
 |---|---|
 | `CFIO_ENABLE_TUI` | FTXUI interface, not implemented yet |
-| `CFIO_ENABLE_QT` | Qt6 interface, in progress. Needs `qt6-base-dev` and `qt6-base-dev-tools` from apt |
+| `CFIO_ENABLE_QT` | Qt6 interface. Needs `qt6-base-dev` and `qt6-base-dev-tools` from apt |
 | `CFIO_ENABLE_SPDK` | SPDK engine, stub only |
 | `CFIO_ENABLE_COVERAGE` | gcov instrumentation and a `coverage` target |
 
@@ -46,7 +46,7 @@ The binary lands in `build/src/cfio`. Feature flags, all off by default:
 ctest --test-dir build --output-on-failure
 ```
 
-289 tests, all passing. Five O_DIRECT fallback tests skip themselves when no tmpfs is available.
+409 tests, all passing. Five O_DIRECT fallback tests skip themselves when no tmpfs is available.
 
 Coverage needs gcovr installed:
 
@@ -83,6 +83,23 @@ HTML output goes to `build/docs/html`.
 | `--keep-files` | off | Do not delete test files after the run |
 
 With no `--output-dir` the results go to `cfio-results/<first-job>-<timestamp>`.
+
+Interface backends for `--ui`:
+
+| Value | Build flag | State |
+|---|---|---|
+| `terminal` | none, always built | Live table on stdout, summary at the end |
+| `tui` | `CFIO_ENABLE_TUI` | Not implemented yet |
+| `qt` | `CFIO_ENABLE_QT` | Window with a live table and IOPS, bandwidth and latency graphs |
+
+The Qt window is a viewer. The run is still started from the command line, the window shows it and
+offers a Stop button that ends the run early. After the run the window stays open so the graphs can
+be read, and Stop turns into Close. Closing the window mid run stops the benchmark and still writes
+the results. The window needs a desktop session, so start it from a graphical terminal:
+
+```bash
+./build/src/cfio --config examples/two-jobs.json --runtime 30 --ui qt
+```
 
 Testing a real block device needs root and wipes the device. Point `filename` at a file first.
 

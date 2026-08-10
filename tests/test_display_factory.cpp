@@ -48,9 +48,11 @@ TEST(DisplayFactoryTest, TuiBackendThrowsWhenNotCompiled) {
   EXPECT_THROW(DisplayFactory::Create("tui"), std::runtime_error);
 }
 
+#ifndef CFIO_QT_ENABLED
 TEST(DisplayFactoryTest, QtBackendThrowsWhenNotCompiled) {
   EXPECT_THROW(DisplayFactory::Create("qt"), std::runtime_error);
 }
+#endif
 
 TEST(DisplayFactoryTest, UnknownBackendThrows) {
   EXPECT_THROW(DisplayFactory::Create("bogus"), std::runtime_error);

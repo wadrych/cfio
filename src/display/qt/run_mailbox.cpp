@@ -8,6 +8,7 @@
 #include <optional>
 #include <utility>
 
+#include "display/display_context.h"
 #include "telemetry/benchmark_results.h"
 #include "telemetry/metrics_snapshot.h"
 
@@ -17,6 +18,11 @@ void RunMailbox::SetRuntime(int runtime_seconds) {
   const std::lock_guard<std::mutex> lock(mutex_);
   runtime_seconds_ = runtime_seconds;
   phase_ = Phase::kRunning;
+}
+
+void RunMailbox::PublishContext(const DisplayContext& context) {
+  const std::lock_guard<std::mutex> lock(mutex_);
+  context_ = context;
 }
 
 void RunMailbox::PublishSnapshot(const MetricsSnapshot& snapshot) {
@@ -48,6 +54,16 @@ std::uint64_t RunMailbox::Sequence() const {
 MetricsSnapshot RunMailbox::LatestSnapshot() const {
   const std::lock_guard<std::mutex> lock(mutex_);
   return latest_;
+}
+
+std::optional<DisplayContext> RunMailbox::TakeContext() {
+  const std::lock_guard<std::mutex> lock(mutex_);
+  if (!context_.has_value()) {
+    return std::nullopt;
+  }
+  std::optional<DisplayContext> taken = std::move(context_);
+  context_.reset();
+  return taken;
 }
 
 std::optional<BenchmarkResults> RunMailbox::TakeResults() {

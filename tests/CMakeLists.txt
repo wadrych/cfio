@@ -23,6 +23,7 @@ add_executable(cfio-tests
   test_metrics_aggregator.cpp
   test_file_preparator.cpp
   test_benchmark_orchestrator.cpp
+  test_display_context_build.cpp
   test_display_factory.cpp
   test_metric_format.cpp
   test_terminal_display.cpp

@@ -159,14 +159,15 @@ struct ChartMargins {
 ///
 /// @param history  Samples in time order.
 /// @param metric   Metric to read.
-/// @return A series whose x is seconds since the first sample, empty if history is empty.
+/// @return A series whose x is seconds since the run started, led by a zero point at the run
+///         start, empty if history is empty.
 [[nodiscard]] ChartSeries ExtractSeries(const std::vector<MetricsSnapshot>& history,
                                         ChartMetric metric);
 
 /// @brief Find the elapsed time covered by a snapshot history
 ///
 /// @param history  Samples in time order.
-/// @return Seconds between the first and the last sample, 0 if there are fewer than two.
+/// @return Whole seconds from the run start to the last sample, 0 if history is empty.
 [[nodiscard]] double SeriesDurationSeconds(const std::vector<MetricsSnapshot>& history);
 
 /// @brief Find the largest y over several series

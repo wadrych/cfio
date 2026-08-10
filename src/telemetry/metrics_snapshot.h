@@ -28,6 +28,7 @@ struct PerJobMetrics {
 /// @brief One sample of live metrics across all jobs
 struct MetricsSnapshot {
   std::chrono::steady_clock::time_point timestamp;  ///< Sample time
+  double elapsed_seconds{};                         ///< Seconds since the run started
   std::vector<PerJobMetrics> jobs;                  ///< Per job metrics
   PerJobMetrics aggregate;                          ///< Sum of all jobs
 };

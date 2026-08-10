@@ -5,6 +5,7 @@
 
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -128,9 +129,9 @@ void ResultsExporter::ExportCsv(const std::vector<MetricsSnapshot>& time_series,
   }
 
   out << "timestamp_s,job_name,iops,bw_bytes,lat_p50_ns,lat_p95_ns,lat_p99_ns,errors\n";
-  for (std::size_t i = 0; i < time_series.size(); ++i) {
-    const std::size_t second = i + 1;
-    for (const PerJobMetrics& job : time_series[i].jobs) {
+  for (const MetricsSnapshot& sample : time_series) {
+    const auto second = static_cast<std::int64_t>(std::llround(sample.elapsed_seconds));
+    for (const PerJobMetrics& job : sample.jobs) {
       out << second << ',' << job.job_name << ',' << job.iops_instant << ',' << job.bw_instant
           << ',' << job.lat_p50_ns << ',' << job.lat_p95_ns << ',' << job.lat_p99_ns << ','
           << (job.read_errors + job.write_errors) << '\n';

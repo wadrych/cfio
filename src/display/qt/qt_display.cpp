@@ -16,6 +16,7 @@ QtDisplay::QtDisplay(RunMailbox& mailbox, DisplayContext context)
 }
 
 void QtDisplay::Init(int runtime_seconds) {
+  mailbox_->PublishContext(context_);
   mailbox_->SetRuntime(runtime_seconds);
 }
 

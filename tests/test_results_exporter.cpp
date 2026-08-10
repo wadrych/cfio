@@ -69,8 +69,9 @@ PerJobMetrics MakePerJobMetrics(const std::string& name, std::uint64_t iops_inst
   return job;
 }
 
-MetricsSnapshot MakeSnapshot(std::vector<PerJobMetrics> jobs) {
+MetricsSnapshot MakeSnapshot(std::vector<PerJobMetrics> jobs, double elapsed_seconds = 1.0) {
   MetricsSnapshot snapshot;
+  snapshot.elapsed_seconds = elapsed_seconds;
   snapshot.jobs = std::move(jobs);
   return snapshot;
 }
@@ -289,8 +290,8 @@ TEST_F(ResultsExporterTest, WritesOneRowPerJobPerSecond) {
       MakePerJobMetrics("rand-read-4k", 125432, 513769472, 0, 0),
       MakePerJobMetrics("seq-write-128k", 48291, 198066176, 0, 0)};
   std::vector<MetricsSnapshot> series;
-  series.push_back(MakeSnapshot(jobs));
-  series.push_back(MakeSnapshot(jobs));
+  series.push_back(MakeSnapshot(jobs, 1.0));
+  series.push_back(MakeSnapshot(jobs, 2.0));
 
   ResultsExporter::ExportCsv(series, temp_dir_);
 

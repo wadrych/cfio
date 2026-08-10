@@ -67,6 +67,22 @@ TEST(QtDisplayTest, InitSetsRuntimeAndPhase) {
   EXPECT_EQ(mailbox.Sequence(), 0U);
 }
 
+TEST(QtDisplayTest, InitPublishesContext) {
+  RunMailbox mailbox;
+  QtDisplay display(mailbox, MakeContext());
+  EXPECT_FALSE(mailbox.TakeContext().has_value());
+
+  display.Init(10);
+
+  const auto taken = mailbox.TakeContext();
+  ASSERT_TRUE(taken.has_value());
+  if (taken.has_value()) {
+    EXPECT_EQ(taken->engine_label, "io_uring");
+    EXPECT_EQ(taken->direct_label, "O_DIRECT");
+    EXPECT_EQ(taken->log_path, "/tmp/cfio.log");
+  }
+}
+
 TEST(QtDisplayTest, UpdatePublishesSnapshot) {
   RunMailbox mailbox;
   QtDisplay display(mailbox, MakeContext());

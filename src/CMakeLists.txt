@@ -32,6 +32,7 @@ add_library(cfio-core STATIC
         telemetry/metrics_aggregator.cpp
         orchestrator/file_preparator.cpp
         orchestrator/benchmark_orchestrator.cpp
+        display/display_context_build.cpp
         display/display_factory.cpp
         display/metric_format.cpp
         display/terminal_display.cpp

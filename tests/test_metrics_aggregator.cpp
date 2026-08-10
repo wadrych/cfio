@@ -390,6 +390,34 @@ TEST(MetricsAggregatorTest, StartStopLifecycleRecordsSeries) {
   EXPECT_GE(aggregator.TimeSeries().size(), 1U);
 }
 
+TEST(MetricsAggregatorTest, FinalSnapshotRecordsFullTrailingSecond) {
+  auto worker = MakeFrozenWorker("job", RWMode::kRead, 40);
+
+  MetricsAggregator aggregator({worker.get()}, 5);
+  MetricsAggregatorTestPeer peer(aggregator);
+  const auto now = std::chrono::steady_clock::now();
+  peer.SetClocks(now - std::chrono::seconds(5), now - std::chrono::seconds(1));
+
+  aggregator.TakeFinalSnapshot();
+
+  ASSERT_EQ(aggregator.TimeSeries().size(), 1U);
+  EXPECT_EQ(aggregator.TimeSeries().front().jobs.size(), 1U);
+}
+
+TEST(MetricsAggregatorTest, FinalSnapshotSkipsShortTail) {
+  auto worker = MakeFrozenWorker("job", RWMode::kRead, 40);
+
+  MetricsAggregator aggregator({worker.get()}, 5);
+  MetricsAggregatorTestPeer peer(aggregator);
+  const auto now = std::chrono::steady_clock::now();
+  peer.SetClocks(now - std::chrono::seconds(5), now - std::chrono::milliseconds(10));
+
+  aggregator.TakeFinalSnapshot();
+
+  EXPECT_TRUE(aggregator.TimeSeries().empty());
+  EXPECT_EQ(aggregator.LatestSnapshot().jobs.size(), 1U);
+}
+
 TEST(MetricsAggregatorTest, FinalSnapshotJoinsSamplingThread) {
   auto worker = MakeFrozenWorker("job", RWMode::kRead, 40);
 
