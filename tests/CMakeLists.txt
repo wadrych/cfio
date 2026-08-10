@@ -29,6 +29,7 @@ add_executable(cfio-tests
   test_results_exporter.cpp
   test_run_mailbox.cpp
   test_qt_display.cpp
+  test_qt_chart_geometry.cpp
 )
 
 target_link_libraries(cfio-tests
